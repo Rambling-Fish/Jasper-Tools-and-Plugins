@@ -5,7 +5,6 @@ package com.coralcea.modules.jasper;
 
 import java.io.File;
 import java.io.FileInputStream;
-import java.io.IOException;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.util.ArrayList;
@@ -40,16 +39,20 @@ import org.jasper.jLib.jCommons.admin.JasperAdminMessage.Type;
 import org.mule.DefaultMuleEvent;
 import org.mule.DefaultMuleMessage;
 import org.mule.MessageExchangePattern;
+import org.mule.api.ConnectionException;
+import org.mule.api.ConnectionExceptionCode;
 import org.mule.api.MuleContext;
 import org.mule.api.MuleEvent;
 import org.mule.api.MuleException;
 import org.mule.api.MuleMessage;
 import org.mule.api.annotations.Category;
 import org.mule.api.annotations.Configurable;
+import org.mule.api.annotations.ConnectionIdentifier;
 import org.mule.api.annotations.Connector;
 import org.mule.api.annotations.Processor;
 import org.mule.api.annotations.Source;
 import org.mule.api.annotations.SourceThreadingModel;
+import org.mule.api.annotations.ValidateConnection;
 import org.mule.api.annotations.display.FriendlyName;
 import org.mule.api.annotations.display.Placement;
 import org.mule.api.annotations.display.Summary;
@@ -129,11 +132,6 @@ public class JasperConnector implements MuleContextAware
     private Connection connection;
     
     /**
-     * The JMS session to Jasper
-     */
-    private Session session;
-    
-    /**
      * Whether the connection is established
      */
     private boolean connected;
@@ -197,6 +195,11 @@ public class JasperConnector implements MuleContextAware
 	 * The admin queue suffix
 	 */
     private static final String JTA_QUEUE_SUFFIX = ".admin.queue";
+    
+    /**
+     * Timeout for message producers
+     */
+    private static final int TIME_TO_LIVE = 30000;
     
 	/**
 	 * The mule context
@@ -279,15 +282,6 @@ public class JasperConnector implements MuleContextAware
 		return version;
 	}
     
-    /**
-     * Decides whether the connection is on
-     * 
-     * @return true if the connection is established; otherwise false
-     */
-    protected boolean isConnected() {
-    	return connected;
-    }
-
 	@Override
 	public void setMuleContext(MuleContext muleContext) {
 		this.muleContext = muleContext;
@@ -296,36 +290,39 @@ public class JasperConnector implements MuleContextAware
     /**
      * Establish a connection to Jasper
      * 
-     * @throws Exception
+     * @throws ConnectionException
      */
     @Start
-    public void connect() throws Exception {
-    	// validate the license
-    	JTALicense license = getValidLicenseKey();
-    	if (license == null || licenseExpiresInDays(license, 0))
-			throw new Exception("Invalid Jasper licens key");
-    	
-    	// create the connection
-		deploymentId = license.getDeploymentId();
-		String username = vendor + ":" + application + ":" + version + ":" + deploymentId;
-		String password = JAuthHelper.bytesToHex(license.getLicenseKey());
-		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("failover://("+url+")");
-		connection = connectionFactory.createConnection(username, password);
-		session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
-		
-		// create the admin handler
-	    String queueName = JTA_QUEUE_PREFIX + vendor + "." + application + "." + version + "." + deploymentId + JTA_QUEUE_SUFFIX;
-	    new AdminHandler(queueName);
-
-		// start the connection
-	    connection.start();
-		connected = true;
-
-		// Start the subscribers and receivers in case they were not started before 
-		for(TopicSubscriber subscriber : topicSubscribers.values())
-			subscriber.start();
-		for(QueueReceiver receiver : queueReceivers.values())
-			receiver.start();
+    public void connect() throws ConnectionException {
+    	try {
+	    	// validate the license
+	    	JTALicense license = getValidLicenseKey();
+	    	if (license == null || licenseExpiresInDays(license, 0))
+				throw new Exception("Invalid Jasper licens key");
+	    	
+	    	// create the connection
+			deploymentId = license.getDeploymentId();
+			String username = vendor + ":" + application + ":" + version + ":" + deploymentId;
+			String password = JAuthHelper.bytesToHex(license.getLicenseKey());
+			ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("failover://("+url+")");
+			connection = connectionFactory.createConnection(username, password);
+			
+			// create the admin handler
+		    String queueName = JTA_QUEUE_PREFIX + vendor + "." + application + "." + version + "." + deploymentId + JTA_QUEUE_SUFFIX;
+		    new AdminHandler(queueName);
+	
+			// start the connection
+		    connection.start();
+			connected = true;
+	
+			// Start the subscribers and receivers in case they were not started before 
+			for(TopicSubscriber subscriber : topicSubscribers.values())
+				subscriber.start();
+			for(QueueReceiver receiver : queueReceivers.values())
+				receiver.start();
+    	} catch (Exception e) {
+    		throw new ConnectionException(ConnectionExceptionCode.UNKNOWN, null, "Error establishing a Jasper connection", e);
+    	}
     }
 
     /**
@@ -334,14 +331,36 @@ public class JasperConnector implements MuleContextAware
      * @throws Exception
      */
     @Stop
-    public void disconnect() throws Exception {
-		connected = false;
-    	if (session != null)
-    		session.close();
-    	if (connection != null) {
-			connection.stop();
-	    	connection.close();
+    public void disconnect() {
+    	try {
+			connected = false;
+	    	if (connection != null) {
+		    	connection.close();
+		    	connection = null;
+	    	}
+    	} catch (Exception e) {
+    		logger.error(e.getMessage());
     	}
+    }
+
+    /**
+     * Decides whether the connection is on
+     * 
+     * @return true if the connection is established; otherwise false
+     */
+    @ValidateConnection
+    public boolean isConnected() {
+    	return connected;
+    }
+
+    /**
+     * Are we connected
+     */
+    @ConnectionIdentifier
+    public String connectionId() {
+    	if (connected)
+    		return String.valueOf(connection.hashCode());
+    	return null;
     }
 
     /**
@@ -362,7 +381,7 @@ public class JasperConnector implements MuleContextAware
      	if (publisher == null)
 			topicPublishers.put(topic, publisher = new TopicPublisher(topic));
      	
-		publisher.publish(createTextMessage(content, null));
+		publisher.publish(createTextMessage(publisher.getSession(), content, null));
 		
 		return content;
     }
@@ -387,6 +406,7 @@ public class JasperConnector implements MuleContextAware
 							logger.warn("Jasper response message recieved with null JMSCorrelationID, ignoring message.");
 							return;
 						}
+						responses.put(msg.getJMSCorrelationID(), msg);
 						if (locks.containsKey(msg.getJMSCorrelationID())){
 							responses.put(msg.getJMSCorrelationID(), msg);
 							Object lock = locks.remove(msg.getJMSCorrelationID());
@@ -402,25 +422,17 @@ public class JasperConnector implements MuleContextAware
 				}
 			};
 
-        TextMessage message = createTextMessage(content, globalReceiver.getQueue());
+     	if (globalSender == null)
+			globalSender = new QueueSender(GLOBAL_QUEUE);
+     	
+	    TextMessage message = createTextMessage(globalSender.getSession(), content, globalReceiver.getQueue());
         String correlationID = message.getJMSCorrelationID();
 		Message responseMsg = null;
 		Object lock = new Object();
 		synchronized (lock) {
 			locks.put(correlationID, lock);
-	     	if (globalSender == null)
-				globalSender = new QueueSender(GLOBAL_QUEUE);
 			globalSender.send(message);
-		    int count = 0;
-		    while(!responses.containsKey(correlationID)){
-		    	try {
-					lock.wait(10000);
-				} catch (InterruptedException e) {
-					logger.error("Interrupted while waiting for lock notification",e);
-				}
-		    	count++;
-		    	if(count >= 3)break;
-		    }
+			lock.wait(10000);
 		    responseMsg = responses.remove(correlationID);
 		}
 		
@@ -487,7 +499,7 @@ public class JasperConnector implements MuleContextAware
      * @return A new text message
      * @throws JMSException
      */
-    private TextMessage createTextMessage(String content, String correlationID, Destination reply) throws JMSException {
+    private TextMessage createTextMessage(Session session, String content, String correlationID, Destination reply) throws JMSException {
         TextMessage message = session.createTextMessage();
 		message.setText(content);
 		message.setJMSCorrelationID(correlationID);
@@ -503,8 +515,8 @@ public class JasperConnector implements MuleContextAware
      * @return A new text message
      * @throws JMSException
      */
-    private TextMessage createTextMessage(String content, Destination reply) throws JMSException {
-    	return createTextMessage(content, UUID.randomUUID().toString(), reply);
+    private TextMessage createTextMessage(Session session, String content, Destination reply) throws JMSException {
+    	return createTextMessage(session, content, UUID.randomUUID().toString(), reply);
     }
     
     /**
@@ -512,19 +524,15 @@ public class JasperConnector implements MuleContextAware
      * 
      * @return a license key if valid one is found, otherwise null
      */
-    private JTALicense getValidLicenseKey() {
+    private JTALicense getValidLicenseKey() throws Exception {
 		String file = System.getProperty("jta-keystore");
 		file += "/" + vendor + "_" + application + "_" + version;
 		file += JAuthHelper.JTA_LICENSE_FILE_SUFFIX;
-		try {
-			JTALicense license = JAuthHelper.loadJTALicenseFromFile(file);
-			if (license.getVendor().equals(vendor) && 
-	    		license.getAppName().equals(application) &&
-	    		license.getVersion().equals(version))
-				return license;
-		} catch (IOException e) {
-			logger.error(e.getMessage(), e);;
-		}
+		JTALicense license = JAuthHelper.loadJTALicenseFromFile(file);
+		if (license.getVendor().equals(vendor) && 
+    		license.getAppName().equals(application) &&
+    		license.getVersion().equals(version))
+			return license;
     	return null;
     }
 
@@ -550,18 +558,24 @@ public class JasperConnector implements MuleContextAware
      * Topic Publisher Class
      */
     private class TopicPublisher  {
+    	private Session session;
     	private Topic topic;
     	private MessageProducer producer;
     	
     	public TopicPublisher(String name) throws Exception {
+			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
     		topic = session.createTopic(name);
     		producer = session.createProducer(topic);
     		producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-    		producer.setTimeToLive(30000);
+    		producer.setTimeToLive(TIME_TO_LIVE);
     	}
     	
     	public void publish(TextMessage message) throws Exception {
     		producer.send(message);
+    	}
+    	
+    	public Session getSession() {
+    		return session;
     	}
     }    	
 	
@@ -569,23 +583,29 @@ public class JasperConnector implements MuleContextAware
      * Queue Sender Class
      */
     private class QueueSender  {
+    	private Session session;
     	private Queue queue;
     	private MessageProducer producer;
     	
     	public QueueSender(String name) throws Exception {
+			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
     		if (name != null)
     			queue = session.createQueue(name);
     		producer = session.createProducer(queue);
     		producer.setDeliveryMode(DeliveryMode.PERSISTENT);
-    		producer.setTimeToLive(30000);
+    		producer.setTimeToLive(TIME_TO_LIVE);
     	}
     	
     	public void send(Message message) throws Exception {
     		producer.send(message);
     	}
 
-    	public void send(Queue destination, Message message) throws Exception {
-    		producer.send(destination, message);
+    	public void send(Queue sendTo, Message message) throws Exception {
+    		producer.send(sendTo, message);
+    	}
+
+    	public Session getSession() {
+    		return session;
     	}
     }    	
 
@@ -595,6 +615,7 @@ public class JasperConnector implements MuleContextAware
     private class TopicSubscriber implements MessageListener {
     	private String name;
     	private SourceCallback callback;
+    	private Session session;
     	private Topic topic;
     	private MessageConsumer consumer;
     	private boolean started;
@@ -607,6 +628,7 @@ public class JasperConnector implements MuleContextAware
  
     	public void start() throws Exception {
     		if (!started && isConnected()) {
+    			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
 	       		topic = session.createTopic(name);
 	    		consumer = session.createConsumer(topic);
 	    		consumer.setMessageListener(this);
@@ -616,7 +638,7 @@ public class JasperConnector implements MuleContextAware
     	
     	public void stop() throws Exception {
     		if (started) {
-	    		consumer.close();
+	    		session.close();
 	    		started = false;
     		}
     	}
@@ -641,6 +663,7 @@ public class JasperConnector implements MuleContextAware
     private class QueueReceiver implements MessageListener, ReplyToHandler {
     	private String name;
     	private SourceCallback callback;
+    	private Session session;
     	private Queue queue;
     	private MessageConsumer consumer;
     	private boolean started;
@@ -653,6 +676,7 @@ public class JasperConnector implements MuleContextAware
     	
     	public void start() throws Exception {
     		if (!started && isConnected()) {
+    			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
         		queue = session.createQueue(name);
 	    		consumer = session.createConsumer(queue);
 	    		consumer.setMessageListener(this);
@@ -662,7 +686,7 @@ public class JasperConnector implements MuleContextAware
     	
     	public void stop() throws Exception {
     		if (started) {
-	    		consumer.close();
+	    		session.close();
 	    		started = false;
     		}
     	}
@@ -713,7 +737,7 @@ public class JasperConnector implements MuleContextAware
 			try {
 		     	if (responseSender == null)
 		     		responseSender = new QueueSender(null);
-		     	responseSender.send((Queue)replyTo, createTextMessage(msg.getPayloadAsString(), msg.getCorrelationId(), null));
+		     	responseSender.send((Queue)replyTo, createTextMessage(responseSender.getSession(), msg.getPayloadAsString(), msg.getCorrelationId(), null));
 			} catch (Exception e) {
 				logger.error("Exception when sending response to Jasper inbound endpoint",e);
 			}
@@ -725,8 +749,10 @@ public class JasperConnector implements MuleContextAware
      * Admin Handler Class
      */
     private class AdminHandler implements MessageListener {
+    	private Session session;
 
     	public AdminHandler(String name) throws Exception {
+			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
     		Queue queue = session.createQueue(name);
     		MessageConsumer consumer = session.createConsumer(queue);
     		consumer.setMessageListener(this);
@@ -740,10 +766,10 @@ public class JasperConnector implements MuleContextAware
 		        		JasperAdminMessage adminMessage = (JasperAdminMessage) obj;
 						if (adminMessage.getType() == Type.ontologyManagement && adminMessage.getCommand() == Command.get_ontology) {
 		        			String[][] triples = getOntologyFromFile();
-		        			Message response = session.createObjectMessage(triples);
-		        			response.setJMSCorrelationID(message.getJMSCorrelationID());
 		    		     	if (responseSender == null)
 		    		     		responseSender = new QueueSender(null);
+		        			Message response = responseSender.getSession().createObjectMessage(triples);
+		        			response.setJMSCorrelationID(message.getJMSCorrelationID());
 							responseSender.send((Queue)message.getJMSReplyTo(), response );
 						} else {
 							logger.warn("Received JasperAdminMessage that isn't supported, ignoring : " + obj);
