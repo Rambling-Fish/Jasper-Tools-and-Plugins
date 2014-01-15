@@ -42,6 +42,8 @@ public class DTANamespacesViewer extends DTAViewer {
 		content.setFocus();
 		getControl().getBody().layout(true, true);
 		getControl().reflow(true);
+		if (getEditor().getSite().getPage().getActivePart().equals(getEditor()))
+			getControl().setFocus();
 	}
 
 	protected Control createContent() {

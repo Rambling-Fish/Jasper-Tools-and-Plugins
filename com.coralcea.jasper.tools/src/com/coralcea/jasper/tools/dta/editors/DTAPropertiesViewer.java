@@ -88,6 +88,8 @@ public class DTAPropertiesViewer extends DTAViewer {
 		content = createContent();
 		getControl().getBody().layout(true, true);
 		getControl().reflow(true);
+		if (getEditor().getSite().getPage().getActivePart().equals(getEditor()))
+			getControl().setFocus();
 	}
 
 	protected Control createContent() {

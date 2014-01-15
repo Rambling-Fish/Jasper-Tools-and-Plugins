@@ -42,7 +42,6 @@ import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.util.FileUtils;
 import com.hp.hpl.jena.vocabulary.RDF;
 
 public class DTAImportPolicyDialog extends Dialog {
