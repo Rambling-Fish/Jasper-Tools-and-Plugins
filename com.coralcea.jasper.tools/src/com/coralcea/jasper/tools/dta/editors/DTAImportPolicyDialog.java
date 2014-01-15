@@ -111,14 +111,13 @@ public class DTAImportPolicyDialog extends Dialog {
 		  }
 		});
 		
-		String uri = editor.getModel().getDocumentManager().getLoadedPolicyURL();
-        String syntax = FileUtils.guessLang(uri);
         model = ModelFactory.createDefaultModel() ;
+        model.setNsPrefix("", OntDocumentManager.NS);
         IProject project = editor.getFileEditorInput().getFile().getProject();
 		policy = project.getFile(DTACore.IMPORT_POLICY);
 		if (policy.exists()) {
 	        try {
-				model.read(policy.getContents(), uri, syntax );
+				model.read(policy.getContents(), null, "RDF/XML-ABBREV" );
 			} catch (CoreException e) {
 				Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Failed to read the DTA policy file");
 				StatusManager.getManager().handle(status, StatusManager.SHOW);
