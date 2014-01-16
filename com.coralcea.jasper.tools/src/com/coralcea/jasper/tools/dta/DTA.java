@@ -17,8 +17,6 @@ public class DTA {
 	public static final Resource None = resource("None");
 	
 	public static final Resource DTA = resource("DTA");
-	public static final Resource Post = resource("Post");
-	public static final Resource Receive = resource("Receive");
 	public static final Resource Request = resource("Request");
 	public static final Resource Provide = resource("Provide");
 	

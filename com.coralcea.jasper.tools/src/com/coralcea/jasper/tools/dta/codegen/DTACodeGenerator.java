@@ -120,14 +120,13 @@ public class DTACodeGenerator {
 				if (nsMap.get(op.getNameSpace()) != null)
 					missingNamespaces.add(op.getNameSpace());
 			}
-			Resource kind = DTAUtilities.getRDFType(op);
 			Resource input = op.getPropertyResourceValue(DTA.input);
-			if (input == null && !DTA.Post.equals(kind))
+			if (input == null)
 				syntaxErrors.add("Operation <"+op.getURI()+"> does not have an input type");
 			if (input != null)
 				collectRelevantTypes(input, relevantTypes);
 			Resource output = op.getPropertyResourceValue(DTA.output);
-			if (output == null && !DTA.Receive.equals(kind))
+			if (output == null)
 				syntaxErrors.add("Operation <"+op.getURI()+"> does not have an output type");
 			if (output != null)
 				collectRelevantTypes(output, relevantTypes);
@@ -518,7 +517,7 @@ public class DTACodeGenerator {
 			aJavaFile.createImport("javax.annotation.Generated", null, null);
 			aJavaFile.createImport("org.codehaus.jackson.annotate.*", null, null);
 			Resource kind = DTAUtilities.getRDFType(operation);
-			if (DTA.Post.equals(kind) || DTA.Request.equals(kind))
+			if (DTA.Request.equals(kind))
 				aJavaFile.createImport("org.mule.api.MuleEventContext", null, null);
 		} catch (JavaModelException e) {
 			Activator.getDefault().log("Error creating Java type", e);
@@ -538,7 +537,7 @@ public class DTACodeGenerator {
 		String methodName = getMethodName(operation);
 
 		Resource kind = DTAUtilities.getRDFType(operation);
-		boolean isSource = DTA.Receive.equals(kind) || DTA.Provide.equals(kind);
+		boolean isSource = DTA.Provide.equals(kind);
 		Resource inputType = operation.getPropertyResourceValue(isSource ? DTA.input : DTA.output);
 		Resource outputType = operation.getPropertyResourceValue(DTA.output);
 		

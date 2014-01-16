@@ -202,7 +202,7 @@ public class DTAUtilities {
 
     public static boolean isOperation(Resource r) {
     	Resource type = DTAUtilities.getRDFType(r);
-    	return DTA.Post.equals(type) || DTA.Receive.equals(type) || DTA.Request.equals(type) || DTA.Provide.equals(type);
+    	return DTA.Request.equals(type) || DTA.Provide.equals(type);
     }
 
     public static boolean isDTA(Resource res) {

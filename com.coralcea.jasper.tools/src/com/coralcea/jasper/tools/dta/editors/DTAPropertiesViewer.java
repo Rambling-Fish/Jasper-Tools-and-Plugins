@@ -190,7 +190,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addKind(Composite group, final OntResource element) {
 		createLabel(group, "Kind:");
         ComboViewer combo = createCombo(group, SWT.READ_ONLY, new FragmentProvider(), 
-        	new Resource[]{DTA.Post, DTA.Provide, DTA.Receive, DTA.Request}, element.getRDFType());
+        	new Resource[]{DTA.Provide, DTA.Request}, element.getRDFType());
 		if (!DTAUtilities.isDefinedByBase(element))
 	        combo.getCombo().setEnabled(false);
 		else {
@@ -202,10 +202,6 @@ public class DTAPropertiesViewer extends DTAViewer {
 						if (!value.equals(element.getRDFType())) {
 							CompoundCommand cc = new CompoundCommand();
 							cc.add(new SetPropertyCommand(element, RDF.type, value));
-							if (DTA.Post.equals(value) && element.getPropertyResourceValue(DTA.input) != null)
-								cc.add(new SetPropertyCommand(element, DTA.input, null));
-							if (DTA.Receive.equals(value) && element.getPropertyResourceValue(DTA.output) != null)
-								cc.add(new SetPropertyCommand(element, DTA.output, null));
 							if (DTA.Request.equals(value)) {
 								Literal queue = element.getModel().createLiteral(DTA.GLOBAL_QUEUE);
 								cc.add(new SetPropertyCommand(element, DTA.destination, queue));
@@ -248,7 +244,7 @@ public class DTAPropertiesViewer extends DTAViewer {
         createLabel(group, "Input Type:");
         Composite linkGroup = createComposite(group, 2);
         createLink(linkGroup, element.getPropertyResourceValue(DTA.input));
-        if (DTAUtilities.isDefinedByBase(element) && !DTA.Post.equals(element.getRDFType())) {
+        if (DTAUtilities.isDefinedByBase(element)) {
 	        Button button = createButton(linkGroup, SWT.ARROW|SWT.DOWN, "");
 	        button.addListener(SWT.Selection, new Listener() {
 				public void handleEvent(Event event) {
@@ -267,7 +263,7 @@ public class DTAPropertiesViewer extends DTAViewer {
         createLabel(group, "Output Type:");
         Composite linkGroup = createComposite(group, 2);
         createLink(linkGroup, element.getPropertyResourceValue(DTA.output));
-        if (DTAUtilities.isDefinedByBase(element) && !DTA.Receive.equals(element.getRDFType())) {
+        if (DTAUtilities.isDefinedByBase(element)) {
 	        Button button = createButton(linkGroup, SWT.ARROW|SWT.DOWN, "");
 	        button.addListener(SWT.Selection, new Listener() {
 				public void handleEvent(Event event) {
