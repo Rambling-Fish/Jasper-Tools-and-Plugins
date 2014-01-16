@@ -203,7 +203,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 							CompoundCommand cc = new CompoundCommand();
 							cc.add(new SetPropertyCommand(element, RDF.type, value));
 							if (DTA.Request.equals(value)) {
-								Literal queue = element.getModel().createLiteral(DTA.GLOBAL_QUEUE);
+								Literal queue = element.getModel().createTypedLiteral(DTA.GLOBAL_QUEUE);
 								cc.add(new SetPropertyCommand(element, DTA.destination, queue));
 							}
 							if (DTA.Request.equals(element.getRDFType()))

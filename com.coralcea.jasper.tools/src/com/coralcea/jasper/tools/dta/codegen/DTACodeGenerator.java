@@ -43,6 +43,7 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.NodeIterator;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.vocabulary.RDF;
 import com.hp.hpl.jena.vocabulary.RDFS;
 import com.hp.hpl.jena.vocabulary.XSD;
 
@@ -115,18 +116,20 @@ public class DTACodeGenerator {
 		
 		for (NodeIterator i = model.listObjectsOfProperty(DTA.operation); i.hasNext(); ) {
 			Resource op = (Resource) i.next();
+			Resource kind = op.getPropertyResourceValue(RDF.type);
 			if (DTAUtilities.isDefinedBy(base, op)) {
 				relevantOps.add(op);
 				if (nsMap.get(op.getNameSpace()) != null)
 					missingNamespaces.add(op.getNameSpace());
 			}
+			boolean isSource = DTA.Provide.equals(kind);
 			Resource input = op.getPropertyResourceValue(DTA.input);
-			if (input == null)
+			if (input == null && isSource)
 				syntaxErrors.add("Operation <"+op.getURI()+"> does not have an input type");
 			if (input != null)
 				collectRelevantTypes(input, relevantTypes);
 			Resource output = op.getPropertyResourceValue(DTA.output);
-			if (output == null)
+			if (output == null && !isSource)
 				syntaxErrors.add("Operation <"+op.getURI()+"> does not have an output type");
 			if (output != null)
 				collectRelevantTypes(output, relevantTypes);
