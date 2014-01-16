@@ -3,9 +3,10 @@ package com.coralcea.jasper.tools.dta.editors;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.viewers.CellEditor;
@@ -54,7 +55,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, editor);
 		try {
 			if (dialog.open() == Dialog.OK)
-				DTACore.saveModel(dialog.model, dialog.policy, null);
+				DTACore.saveModel(dialog.model, dialog.policy, false, null);
 		} catch (Exception e) {
 			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Failed to save the DTA policy file");
 			StatusManager.getManager().handle(status, StatusManager.SHOW);
@@ -112,8 +113,8 @@ public class DTAImportPolicyDialog extends Dialog {
 		
         model = ModelFactory.createDefaultModel() ;
         model.setNsPrefix("", OntDocumentManager.NS);
-        IProject project = editor.getFileEditorInput().getFile().getProject();
-		policy = project.getFile(DTACore.IMPORT_POLICY);
+        IContainer folder = editor.getFileEditorInput().getFile().getParent();
+		policy = folder.getFile(Path.fromOSString(DTACore.IMPORT_POLICY));
 		if (policy.exists()) {
 	        try {
 				model.read(policy.getContents(), null, "RDF/XML-ABBREV" );

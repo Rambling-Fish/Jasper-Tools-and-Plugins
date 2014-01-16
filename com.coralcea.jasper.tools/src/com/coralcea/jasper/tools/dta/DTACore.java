@@ -9,8 +9,8 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
@@ -18,6 +18,7 @@ import org.eclipse.core.resources.IResourceDeltaVisitor;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.ui.statushandlers.StatusManager;
 
@@ -38,14 +39,13 @@ public class DTACore  {
 
 	public static String FORMAT = "RDF/XML-ABBREV";
 	
-	public static String IMPORT_POLICY = "src/main/app/import-policy.rdf";
-	public static String IMPORT_POLICY2 = "target/classes/import-policy.rdf";
+	public static String IMPORT_POLICY = "import-policy.rdf";
 
 	private static ResourceListener resourceListener = new ResourceListener();
 	
 	private static HashMap<IFile, OntModel> fileToModelMap = new HashMap<IFile, OntModel>();
 	
-	private static HashMap<IProject, OntModelSpec> projectToSpecMap = new HashMap<IProject, OntModelSpec>();
+	private static HashMap<IContainer, OntModelSpec> containerToSpecMap = new HashMap<IContainer, OntModelSpec>();
 	
 	private static List<DTAChangeListener> listeners = new ArrayList<DTAChangeListener>();
 	
@@ -59,7 +59,7 @@ public class DTACore  {
 		for(IFile file : fileToModelMap.keySet())
 			unloadModel(file);
 		fileToModelMap.clear();
-		projectToSpecMap.clear();
+		containerToSpecMap.clear();
 	}
 	
 	private static void startListening() {
@@ -82,22 +82,22 @@ public class DTACore  {
 	}
 	
 	private static OntModelSpec getModelSpec(IFile file) {
-		IProject project = file.getProject();
-		OntModelSpec spec = projectToSpecMap.get(project);
+		IContainer container = file.getParent();
+		OntModelSpec spec = containerToSpecMap.get(container);
 		if (spec == null) {
 			spec = new OntModelSpec(OntModelSpec.OWL_DL_MEM);
 			OntDocumentManager dm = new OntDocumentManager();
-			IFile policy = project.getFile(IMPORT_POLICY);
+			IFile policy = container.getFile(Path.fromOSString(IMPORT_POLICY));
 			configureDocumentManager(dm, policy);
 			spec.setDocumentManager(dm);
-			projectToSpecMap.put(project, spec);
+			containerToSpecMap.put(container, spec);
 		}
 		return spec;
 	}
 	
 	private static void updateModelSpec(IFile policy) {
-		IProject project = policy.getProject();
-		OntModelSpec spec = projectToSpecMap.get(project);
+		IContainer container = policy.getParent();
+		OntModelSpec spec = containerToSpecMap.get(container);
 		if (spec != null)
 			configureDocumentManager(spec.getDocumentManager(), policy);
 	}
@@ -158,18 +158,20 @@ public class DTACore  {
 	}
 	
 	public static void saveModel(OntModel model, IFile file, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
-		saveModel(model.getBaseModel(), file, monitor);
+		saveModel(model.getBaseModel(), file, false, monitor);
 	}
 	
-	public static void saveModel(Model model, IFile file, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
+	public static void saveModel(Model model, IFile file, boolean notify, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		DTACore.writeModel(model, out);
-		stopListening();
+		if (notify)
+			stopListening();
 		if (file.exists())
-			file.setContents(new ByteArrayInputStream(out.toByteArray()), true, false, monitor);
+			file.setContents(new ByteArrayInputStream(out.toByteArray()), false, true, monitor);
 		else
 			file.create(new ByteArrayInputStream(out.toByteArray()), true, monitor);
-		startListening();
+		if (notify)
+			startListening();
 	}
 
 	public static void addChangeListener(DTAChangeListener listener) {
@@ -202,11 +204,10 @@ public class DTACore  {
 			if (!(delta.getResource() instanceof IFile))
 				return true;
 			IFile file = (IFile) delta.getResource();
-			String path = file.getProjectRelativePath().toString();
 			if (fileToModelMap.containsKey(file)) {
 				if ((delta.getKind() & (IResourceDelta.REMOVED|IResourceDelta.CHANGED))!=0) 
 					unloadModel(file);
-			} else if (path.equals(IMPORT_POLICY) || path.toString().equals(IMPORT_POLICY2)) {
+			} else if (file.getName().equals(IMPORT_POLICY)) {
 				if ((delta.getKind() & (IResourceDelta.ADDED|IResourceDelta.REMOVED|IResourceDelta.CHANGED))!=0) 
 					updateModelSpec(file);
 			}
