@@ -254,6 +254,8 @@ public class DTACodeGenerator {
 		error |= generateFields(aType, type);
 		error |= generateGetters(aType, type, true);
 		error |= generateSetters(aType, type, true);
+		error |= generateHashCode(aType);
+		error |= generateEquals(aType);
 		
 		monitor.done();
 		return error;
@@ -367,7 +369,7 @@ public class DTACodeGenerator {
 		        String propAnnot = "@JsonProperty(\""+property.getURI()+"\")\n";
 
 		        try {
-			        aField = aType.createField("\n\n\n"+genAnnot+propAnnot+"private "+fieldTypeName+" "+fieldName+";", null, true, null);
+			        aField = aType.createField(genAnnot+propAnnot+"private "+fieldTypeName+" "+fieldName+";", null, true, null);
 				} catch (Exception e) {
 					Activator.getDefault().log("Error creating Java type", e);
 					error=true;
@@ -425,7 +427,7 @@ public class DTACodeGenerator {
 		        String propAnnot = "@JsonProperty(\""+property.getURI()+"\")\n";
 
 		        try {
-		        	aMethod = aType.createMethod("\n\n\n"+genAnnot+propAnnot+"public "+methodTypeName+" "+getterName+"()"+body, null, true, null);
+		        	aMethod = aType.createMethod(genAnnot+propAnnot+"public "+methodTypeName+" "+getterName+"()"+body, null, true, null);
 				} catch (Exception e) {
 					Activator.getDefault().log("Error creating Java type", e);
 					error=true;
@@ -483,7 +485,7 @@ public class DTACodeGenerator {
 		        String propAnnot = "@JsonProperty(\""+property.getURI()+"\")\n";
 
 		        try {
-		        	aMethod = aType.createMethod("\n\n\n"+genAnnot+propAnnot+"public void "+setterName+"("+methodTypeName+" "+fieldName+")"+body, null, true, null);
+		        	aMethod = aType.createMethod(genAnnot+propAnnot+"public void "+setterName+"("+methodTypeName+" "+fieldName+")"+body, null, true, null);
 				} catch (Exception e) {
 					Activator.getDefault().log("Error creating Java type", e);
 					error=true;
@@ -579,13 +581,110 @@ public class DTACodeGenerator {
         	String genAnnot = "@Generated(\"true\")\n";
 
 	        try {
-	        	aMethod = aType.createMethod("\n\n\n"+genAnnot+"public "+outputTypeName+" "+methodName+"("+inputTypeName+" "+inputName+")"+body, null, true, null);
+	        	aMethod = aType.createMethod(genAnnot+"public "+outputTypeName+" "+methodName+"("+inputTypeName+" "+inputName+")"+body, null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
 			}
         }
         return error;
+	}
+	
+	private static boolean generateHashCode(IType aType) {
+		boolean error=false;
+		
+    	String genAnnot = "@Generated(\"true\")\n";
+    	String genOverride = "@Override\n";
+    	String body = "";
+
+		try {
+			IField[] fields= aType.getFields();
+			if (fields.length == 0)
+				return error;
+			
+	    	body += "\tfinal int prime = 31;\n";
+	    	body += "\tint result = 1;\n";
+	    	for(IField field : fields) {
+    			String typeSig = field.getTypeSignature();
+    			String fieldName = field.getElementName();;
+    			if (typeSig.equals("I")) {
+    				body += "\tresult = prime * result + "+fieldName+";\n";
+    			} else if (typeSig.equals("Z")) {
+    				body += "\tresult = prime * result + (awake ? 1231 : 1237);\n";
+    			} else if (typeSig.equals("D")) {
+    				body += "\tlong temp = Double.doubleToLongBits("+fieldName+");\n";
+    				body += "\tresult = prime * result + (int) (temp ^ (temp >>> 32));\n";
+    			} else {
+    				body += "\tresult = prime * result + (("+fieldName+" == null) ? 0 : "+fieldName+".hashCode());\n";
+    			}
+	    	}
+	    	body += "\treturn result;\n";
+		} catch (JavaModelException e) {
+			Activator.getDefault().log("Error creating Java type", e);
+			error=true;
+		}
+		
+        try {
+        	aType.createMethod(genAnnot+genOverride+"public int hashCode() {\n"+body+"}", null, true, null);
+		} catch (Exception e) {
+			Activator.getDefault().log("Error creating Java type", e);
+			error=true;
+		}
+		return error;
+	}
+
+	private static boolean generateEquals(IType aType) {
+		boolean error=false;
+		
+    	String genAnnot = "@Generated(\"true\")\n";
+    	String genOverride = "@Override\n";
+    	String body = "";
+
+		try {
+			IField[] fields= aType.getFields();
+			if (fields.length == 0)
+				return error;
+			
+	    	body += "\tif (this == obj)\n";
+	    	body += "\t\treturn true;\n";
+	    	body += "\tif (obj == null)\n";
+	    	body += "\t\treturn false;\n";
+	    	body += "\tif (getClass() != obj.getClass())\n";
+	    	body += "\t\treturn false;\n";
+	    	body += "\t"+aType.getElementName()+" other = ("+aType.getElementName()+") obj;\n";
+	    	for(IField field : fields) {
+				String typeSig = field.getTypeSignature();
+				String fieldName = field.getElementName();;
+				if (typeSig.equals("I")) {
+					body += "\tif ("+fieldName+" != other."+fieldName+")\n";
+					body += "\t\treturn false;\n";
+				} else if (typeSig.equals("Z")) {
+					body += "\tif ("+fieldName+" != other."+fieldName+")\n";
+					body += "\t\treturn false;\n";
+				} else if (typeSig.equals("D")) {
+					body += "\tif (Double.doubleToLongBits("+fieldName+") != Double.doubleToLongBits(other."+fieldName+"))\n";
+					body += "\t\treturn false;\n";
+				} else {
+					body += "\tif ("+fieldName+" == null) {\n";
+					body += "\t\tif (other."+fieldName+" != null)\n";
+					body += "\t\t\treturn false;\n";
+					body += "\t} else if (!"+fieldName+".equals(other."+fieldName+"))\n";
+					body += "\t\treturn false;\n";
+				}
+	    	}
+	    	body += "\treturn true;\n";
+		} catch (Exception e) {
+			Activator.getDefault().log("Error creating Java type", e);
+			error=true;
+		}
+   	
+        try {
+        	aType.createMethod(genAnnot+genOverride+"public boolean equals(Object obj) {\n"+body+"}", null, true, null);
+		} catch (Exception e) {
+			Activator.getDefault().log("Error creating Java type", e);
+			error=true;
+		}
+		return error;
 	}
 
 	private static void collectRelevantTypes(Resource type, Set<Resource> relevantTypes) {
