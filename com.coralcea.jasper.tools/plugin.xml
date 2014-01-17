@@ -2,28 +2,11 @@
 <?eclipse version="3.4"?>
 <plugin>
    <extension
-         id="com.coralcea.jasper.natures.DTA"
-         name="DTA Nature"
-         point="org.eclipse.core.resources.natures">
-      <runtime>
-         <run
-               class="com.coralcea.jasper.tools.dta.DTANature">
-         </run>
-      </runtime>
-   </extension>
-   <extension
          point="org.eclipse.ui.newWizards">
       <category
             id="com.coralcea.jasper.wizards"
             name="Jasper">
       </category>
-      <wizard
-            id="com.coralcea.jasper.wizards.ConvertToDTA"
-            name="Convert To a DTA Project"
-            category="com.coralcea.jasper.wizards"
-            class="com.coralcea.jasper.tools.dta.wizards.ConvertToDTAWizard"
-            icon="icons/file.gif">
-      </wizard>
       <wizard
             id="com.coralcea.jasper.wizards.DTAModel"
             name="DTA Model"

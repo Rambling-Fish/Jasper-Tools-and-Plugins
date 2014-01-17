@@ -2,8 +2,8 @@ package com.coralcea.jasper.tools.dta.wizards;
 
 import java.lang.reflect.InvocationTargetException;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
@@ -55,13 +55,13 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 	 * using wizard as execution context.
 	 */
 	public boolean performFinish() {
-		final String projectName = page.getProjectName();
+		final String folderName = page.getFolderName();
 		final String modelName = page.getModelName();
 		final String modelURI = page.getModelURI();
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException {
 				try {
-					doFinish(projectName, modelName, modelURI, monitor);
+					doFinish(folderName, modelName, modelURI, monitor);
 				} catch (CoreException e) {
 					throw new InvocationTargetException(e);
 				} finally {
@@ -83,8 +83,8 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 	
 	private void doFinish(String containerName, String modelName, String modelURI, IProgressMonitor monitor) throws CoreException {
 		monitor.beginTask("Creating " + modelName, 1);
-		IProject project = (IProject) ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(containerName));
-		final IFile file = (IFile) project.getFile("src/main/app/"+modelName+".dta");
+		IContainer container = (IContainer) ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(containerName));
+		final IFile file = (IFile) container.getFile(Path.fromOSString(modelName+".dta"));
 		
 		OntModel model = DTACore.createModel(file);
 		model.setNsPrefix("", modelURI+"#");

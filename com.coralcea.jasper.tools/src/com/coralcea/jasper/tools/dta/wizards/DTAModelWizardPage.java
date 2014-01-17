@@ -1,6 +1,6 @@
 package com.coralcea.jasper.tools.dta.wizards;
 
-import org.eclipse.core.resources.IProject;
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
@@ -21,16 +21,13 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.ui.dialogs.ContainerSelectionDialog;
 
-import com.coralcea.jasper.tools.dta.DTANature;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 
-/**
- * 
- */
-
 public class DTAModelWizardPage extends WizardPage {
+
+	public static final String NATURE = "org.mule.tooling.core.muleNature";
 	
-	private Text projectName;
+	private Text folderName;
 	private Text modelName;
 	private Text modelURI;
 	private IStructuredSelection selection;
@@ -58,13 +55,13 @@ public class DTAModelWizardPage extends WizardPage {
 		layout.verticalSpacing = 9;
 		
 		Label label = new Label(container, SWT.NULL);
-		label.setText("&DTA project:");
-		label.setToolTipText("The name of a project with the DTA nature");
+		label.setText("Parent folder:");
+		label.setToolTipText("The path to the parent folder");
 
-		projectName = new Text(container, SWT.BORDER | SWT.SINGLE);
+		folderName = new Text(container, SWT.BORDER | SWT.SINGLE);
 		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
-		projectName.setLayoutData(gd);
-		projectName.addModifyListener(new ModifyListener() {
+		folderName.setLayoutData(gd);
+		folderName.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
 				dialogChanged();
 			}
@@ -80,7 +77,7 @@ public class DTAModelWizardPage extends WizardPage {
 		
 		label = new Label(container, SWT.NULL);
 		label.setText("&Model Name:");
-		label.setToolTipText("The name of a DTA model (should be the Jasper application name if it is the main DTA in a project)");
+		label.setToolTipText("The name of a DTA model (.dta)");
 
 		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
 		gd = new GridData(GridData.FILL_HORIZONTAL);
@@ -122,13 +119,12 @@ public class DTAModelWizardPage extends WizardPage {
 			if (obj instanceof IAdaptable)
 				obj = ((IAdaptable)obj).getAdapter(IResource.class);
 			if (obj instanceof IResource) {
-				IProject project;
-				if (obj instanceof IProject)
-					project = (IProject) obj;
+				IContainer container;
+				if (obj instanceof IContainer)
+					container = (IContainer) obj;
 				else
-					project = ((IResource) obj).getProject();
-				if (DTAUtilities.hasNature(project, DTANature.ID))
-				   projectName.setText(project.getFullPath().toString());
+					container = ((IResource) obj).getParent();
+			   folderName.setText(container.getFullPath().toString());
 			}
 		}
 		modelName.setText("Model1");
@@ -142,12 +138,11 @@ public class DTAModelWizardPage extends WizardPage {
 
 	private void handleBrowse() {
 		ContainerSelectionDialog dialog = new ContainerSelectionDialog(
-				getShell(), ResourcesPlugin.getWorkspace().getRoot(), false,
-				"Select a DTA project");
+				getShell(), ResourcesPlugin.getWorkspace().getRoot(), false, null);
 		if (dialog.open() == ContainerSelectionDialog.OK) {
 			Object[] result = dialog.getResult();
 			if (result.length == 1) {
-				projectName.setText(((Path) result[0]).toString());
+				folderName.setText(((Path) result[0]).toString());
 			}
 		}
 	}
@@ -157,26 +152,22 @@ public class DTAModelWizardPage extends WizardPage {
 	 */
 
 	private void dialogChanged() {
-		IResource project = ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(getProjectName()));
+		IResource container = ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(getFolderName()));
 
-		if (getProjectName().length() == 0) {
-			updateStatus("Project must be specified");
+		if (getFolderName().length() == 0) {
+			updateStatus("A folder must be specified");
 			return;
 		}
-		if (project == null || (project.getType() & IResource.PROJECT) == 0) {
-			updateStatus("Project must exist");
+		if (container == null || !(container instanceof IContainer)) {
+			updateStatus("Folder must exist");
 			return;
 		}
-		if (!DTAUtilities.hasNature((IProject)project, DTANature.ID)) {
-			updateStatus("Not a DTA project");
-			return;
-		}
-		if (!project.isAccessible()) {
-			updateStatus("Project must be writable");
+		if (!container.isAccessible()) {
+			updateStatus("Folder must be writable");
 			return;
 		}
 		
-		IResource model = ((IProject)project).findMember("src/main/app/"+getModelName()+".dta");
+		IResource model = ((IContainer)container).findMember(getModelName()+".dta");
 		
 		if (model != null && model.exists()) {
 			updateStatus("Model already exists");
@@ -195,8 +186,8 @@ public class DTAModelWizardPage extends WizardPage {
 		setPageComplete(message == null);
 	}
 
-	public String getProjectName() {
-		return projectName.getText();
+	public String getFolderName() {
+		return folderName.getText();
 	}
 
 	public String getModelName() {

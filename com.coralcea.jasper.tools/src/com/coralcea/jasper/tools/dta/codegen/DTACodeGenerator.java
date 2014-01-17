@@ -6,12 +6,16 @@ import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 
+import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IFolder;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
+import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.Path;
+import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.jdt.core.IAnnotatable;
@@ -26,10 +30,13 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
+import org.eclipse.jface.dialogs.IInputValidator;
+import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.ui.dialogs.ContainerSelectionDialog;
 import org.eclipse.ui.statushandlers.StatusManager;
 
 import com.coralcea.jasper.tools.Activator;
@@ -85,15 +92,29 @@ public class DTACodeGenerator {
 			return;
 		}
 		
-		MessageDialog proceed = new MessageDialog(shell, "Generate Code", null, "Are you sure you want to generate code?", MessageDialog.QUESTION_WITH_CANCEL, new String[]{"Yes", "No"}, 0);
-		if (proceed.open() != MessageDialog.OK) {
+		final IContainer container;
+		try {
+			QualifiedName qName = new QualifiedName(DTA.URI, "codegenContainer");
+			String value = (String) file.getSessionProperty(qName);
+			IResource res = (value != null) ? ResourcesPlugin.getWorkspace().getRoot().findMember(value) : null;
+			IContainer initial = (res instanceof IContainer) ? (IContainer) res : file.getParent();
+		
+			ContainerSelectionDialog dialog = new ContainerSelectionDialog(shell, initial, false, "Select the folder to generate code in:");
+			if (dialog.open() != ContainerSelectionDialog.OK) {
+				return;
+			}
+			container = (IContainer) ResourcesPlugin.getWorkspace().getRoot().findMember((Path)dialog.getResult()[0]);
+			
+			file.setSessionProperty(qName, container.getFullPath().toString());
+		} catch (CoreException e) {
+			Activator.getDefault().log("Error finding a codegen container", e);
 			return;
 		}
-		
+				
 		IRunnableWithProgress runnable = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
 				try {
-					if (generate(file, model, relevantOps, relevantTypes, monitor)) {
+					if (generate(container, model, relevantOps, relevantTypes, monitor)) {
 						Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "An error occurred during code generation. Check error log for more details");
 						StatusManager.getManager().handle(status, StatusManager.SHOW);
 					}
@@ -147,12 +168,10 @@ public class DTACodeGenerator {
 		}
 	}
 	
-	private static boolean generate(IFile file, OntModel model, Set<Resource> relevantOps, Set<Resource> relevantTypes, IProgressMonitor monitor) {
+	private static boolean generate(IContainer container, OntModel model, Set<Resource> relevantOps, Set<Resource> relevantTypes, IProgressMonitor monitor) {
 		boolean error=false;
 		
-		IProject project = file.getProject();
-		IFolder folder = project.getFolder("src/main/java/");
-		IPackageFragmentRoot root = (IPackageFragmentRoot) JavaCore.create(folder);
+		IPackageFragmentRoot root = (IPackageFragmentRoot) JavaCore.create(container);
 
 		monitor.beginTask("Generating Code", 10);
 		error |= generatePackages(root, model, relevantOps, relevantTypes, new SubProgressMonitor(monitor, 1));
@@ -160,7 +179,7 @@ public class DTACodeGenerator {
 		monitor.done();
 
 		try {
-			folder.refreshLocal(IResource.DEPTH_INFINITE, null);
+			container.refreshLocal(IResource.DEPTH_INFINITE, null);
 		} catch (CoreException e) {
 			Activator.getDefault().log("Failed to generate/update folder", e);
 			error=true;
