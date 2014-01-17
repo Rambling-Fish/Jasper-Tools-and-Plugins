@@ -74,8 +74,8 @@ public class DTACore  {
 		dm.setMetadataSearchPath(policy.getLocation().toOSString(), true);
 		dm.getFileManager().addLocatorFile(policy.getParent().getLocation().toOSString());
 		dm.setReadFailureHandler(new OntDocumentManager.ReadFailureHandler() {
-			public void handleFailedRead(String url, Model model, Exception e) {
-				Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Could not load model "+url, e);
+			public void handleFailedRead(String uri, Model model, Exception e) {
+				Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Could not find the model for imported URI <"+uri+">", e);
 				StatusManager.getManager().handle(status, StatusManager.SHOW);
 			}
 		});
@@ -164,13 +164,13 @@ public class DTACore  {
 	public static void saveModel(Model model, IFile file, boolean notify, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		DTACore.writeModel(model, out);
-		if (notify)
+		if (!notify)
 			stopListening();
 		if (file.exists())
 			file.setContents(new ByteArrayInputStream(out.toByteArray()), false, true, monitor);
 		else
 			file.create(new ByteArrayInputStream(out.toByteArray()), true, monitor);
-		if (notify)
+		if (!notify)
 			startListening();
 	}
 

@@ -9,6 +9,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.EditingSupport;
@@ -31,6 +32,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
+import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.statushandlers.StatusManager;
 
 import com.coralcea.jasper.tools.Activator;
@@ -54,8 +56,16 @@ public class DTAImportPolicyDialog extends Dialog {
 	public static void run(Shell shell, DTAEditor editor) {
 		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, editor);
 		try {
-			if (dialog.open() == Dialog.OK)
-				DTACore.saveModel(dialog.model, dialog.policy, false, null);
+			if (dialog.open() == Dialog.OK) {
+				DTACore.saveModel(dialog.model, dialog.policy, true, null);
+				MessageDialog reload = new MessageDialog(shell, "Model Reload", null, "Do you want to reload the model?", MessageDialog.QUESTION_WITH_CANCEL, new String[]{"Yes", "No"}, 0);
+				if (reload.open() == MessageDialog.OK) {
+					IFile file = editor.getFileEditorInput().getFile();
+					DTACore.unloadModel(file);
+					DTACore.notifyListeners(file);
+					editor.setInput(new FileEditorInput(file));
+				}
+			}
 		} catch (Exception e) {
 			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Failed to save the DTA policy file");
 			StatusManager.getManager().handle(status, StatusManager.SHOW);

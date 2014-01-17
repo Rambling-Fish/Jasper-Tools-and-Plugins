@@ -102,8 +102,10 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		IFile file = ((IFileEditorInput)input).getFile();
 		try {
 			OntModel newModel = DTACore.getModel(file);
-			if (newModel != getModel())
+			if (newModel != getModel()) {
 				setModel(newModel);
+				refresh();
+			}
 		} catch (Exception e) {
 			Activator.getDefault().log("Error opening DTA file", e);
 			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, e.getMessage());
@@ -197,8 +199,9 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		createNamespacesPage();
 		createSourcePage();
 		
-		getSite().setSelectionProvider(new DTASelectionProvider(this));
 		setModel(model);
+		
+		getSite().setSelectionProvider(new DTASelectionProvider(this));
 	}
 	
 	@Override
@@ -236,7 +239,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	}
 	
 	public void setSelectedElement(Resource element) {
-		if (getActivePage() != -1) {
+		if (getActivePage() != -1 && element != null) {
 			DTAViewer viewer = getViewer(getActivePage());
 			viewer.setSelection(new StructuredSelection(element), true);
 		}

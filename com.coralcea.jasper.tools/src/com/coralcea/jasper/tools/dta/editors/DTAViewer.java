@@ -53,12 +53,6 @@ public abstract class DTAViewer extends Viewer {
 		form = toolkit.createScrolledForm(parent);
 		toolkit.decorateFormHeading(form.getForm());
 		form.getBody().setLayout(new FillLayout());
-		/*form.addControlListener(new ControlAdapter() {
-		    public void controlResized(ControlEvent e) {
-		    	if (form.getContent() != null)
-		    		resizeControl();
-		    }
-		});*/
 		addActions();
 	}
 	

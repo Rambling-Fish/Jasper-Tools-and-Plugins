@@ -5,12 +5,10 @@ import org.eclipse.ui.IMemento;
 import org.eclipse.ui.INavigationLocation;
 import org.eclipse.ui.NavigationLocation;
 
-import com.hp.hpl.jena.rdf.model.Resource;
-
 public class DTANavigationLocation extends NavigationLocation {
 
 	private int page = -1;
-	private Resource element;
+	private String element;
 	
 	protected DTANavigationLocation(IEditorPart editorPart, boolean initialize) {
 		super(editorPart);
@@ -22,17 +20,14 @@ public class DTANavigationLocation extends NavigationLocation {
 	public void saveState(IMemento memento) {
 		memento.putInteger("Page", page);
 		if (element != null)
-			memento.putString("Element", element.getURI());
+			memento.putString("Element", element);
 	}
 
 	@Override
 	public void restoreState(IMemento memento) {
 		if (getEditorPart() instanceof DTAEditor) {
-			DTAEditor editor = (DTAEditor) getEditorPart();
 			page = memento.getInteger("Page");
-			String uri = memento.getString("Element");
-			if (uri != null)
-				element = editor.getModel().getOntResource(uri);
+			element = memento.getString("Element");
 		}
 	}
 
@@ -43,7 +38,7 @@ public class DTANavigationLocation extends NavigationLocation {
 			if (page != -1 && page != editor.getActivePage())
 				editor.setActivePage(page);
 			if (element != null)
-				editor.setSelectedElement(element);
+				editor.setSelectedElement(editor.getModel().getOntResource(element));
 		}
 	}
 
@@ -66,7 +61,8 @@ public class DTANavigationLocation extends NavigationLocation {
 		if (getEditorPart() instanceof DTAEditor) {
 			DTAEditor editor = (DTAEditor) getEditorPart();
 			page = editor.getActivePage();
-			element = editor.getSelectedElement();
+			if (editor.getSelectedElement() != null)
+				element = editor.getSelectedElement().getURI();
 		}
 	}
 }
