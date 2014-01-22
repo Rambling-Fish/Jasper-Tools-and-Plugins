@@ -8,8 +8,6 @@ import java.util.Set;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.IFolder;
-import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
@@ -30,9 +28,6 @@ import org.eclipse.jdt.core.IType;
 import org.eclipse.jdt.core.JavaCore;
 import org.eclipse.jdt.core.JavaModelException;
 import org.eclipse.jdt.core.Signature;
-import org.eclipse.jface.dialogs.IInputValidator;
-import org.eclipse.jface.dialogs.InputDialog;
-import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.dialogs.ProgressMonitorDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.swt.widgets.Shell;
@@ -97,7 +92,10 @@ public class DTACodeGenerator {
 			QualifiedName qName = new QualifiedName(DTA.URI, "codegenContainer");
 			String value = (String) file.getSessionProperty(qName);
 			IResource res = (value != null) ? ResourcesPlugin.getWorkspace().getRoot().findMember(value) : null;
-			IContainer initial = (res instanceof IContainer) ? (IContainer) res : file.getParent();
+			IContainer initial = (res instanceof IContainer) ? (IContainer) res : file.getParent().getParent().getFolder(Path.fromOSString("java"));
+			
+			if (initial == null || !initial.exists())
+				initial = file.getParent();
 		
 			ContainerSelectionDialog dialog = new ContainerSelectionDialog(shell, initial, false, "Select the folder to generate code in:");
 			if (dialog.open() != ContainerSelectionDialog.OK) {
@@ -311,7 +309,7 @@ public class DTACodeGenerator {
 			}
 	        
 	        String subTypeNames = "";
-	        for (OntClass subType : DTAUtilities.getAllSubClasses(type)) {
+	        for (OntClass subType : DTAUtilities.getSelfAndAllSubClasses(type)) {
 	        	String subTypeName = getTypeName(subType);
 				String subTypePackName = getPackageName(subType);
 				if (!subTypePackName.equals("xsd") && !subTypePackName.equals(typePackage))
@@ -323,10 +321,11 @@ public class DTACodeGenerator {
 	        
 	        String genAnnot = "@Generated(\"true\")";
 	        String uriAnnot = "@JsonTypeName(\""+type.getURI()+"\")\n";
+	        String infoAnnot = "@JsonTypeInfo(use=JsonTypeInfo.Id.NAME, include=JsonTypeInfo.As.PROPERTY, property=\"@type\")\n";
 	        String subtypeAnnot = subTypeNames.length()>0 ? "@JsonSubTypes({\n"+subTypeNames+"\n})\n" : "";
 
 			try {
-				aType = aJavaFile.createType(genAnnot+uriAnnot+subtypeAnnot+"public interface "+typeName+superTypeNames+" {\n}", null, true, null);
+				aType = aJavaFile.createType(genAnnot+uriAnnot+infoAnnot+subtypeAnnot+"public interface "+typeName+superTypeNames+" {\n}", null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
@@ -522,13 +521,16 @@ public class DTACodeGenerator {
 
 		String typeName = getTypeName(operation);
         IType aType = aJavaFile.getType(typeName);
+		Resource kind = DTAUtilities.getRDFType(operation);
 
         if (!aType.exists()) {
 	        String genAnnot = "@Generated(\"true\")";
 	        String uriAnnot = "@JsonTypeName(\""+operation.getURI()+"\")\n";
 
+	        String interfaces = DTA.Request.equals(kind) ? " implements Callable" : "";
+	        
 			try {
-				aType = aJavaFile.createType(genAnnot+uriAnnot+"public class "+typeName+" {\n}", null, true, null);
+				aType = aJavaFile.createType(genAnnot+uriAnnot+"public class "+typeName+interfaces+" {\n}", null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
@@ -538,9 +540,10 @@ public class DTACodeGenerator {
 		try {
 			aJavaFile.createImport("javax.annotation.Generated", null, null);
 			aJavaFile.createImport("org.codehaus.jackson.annotate.*", null, null);
-			Resource kind = DTAUtilities.getRDFType(operation);
-			if (DTA.Request.equals(kind))
+			if (DTA.Request.equals(kind)) {
 				aJavaFile.createImport("org.mule.api.MuleEventContext", null, null);
+				aJavaFile.createImport("org.mule.api.lifecycle.Callable", null, null);
+			}
 		} catch (JavaModelException e) {
 			Activator.getDefault().log("Error creating Java type", e);
 			error=true;
@@ -602,7 +605,7 @@ public class DTACodeGenerator {
         	String genAnnot = "@Generated(\"true\")\n";
 
 	        try {
-	        	aMethod = aType.createMethod(genAnnot+"public "+outputTypeName+" "+methodName+"("+inputTypeName+" "+inputName+")"+body, null, true, null);
+	        	aMethod = aType.createMethod(genAnnot+"public "+outputTypeName+" "+methodName+"("+inputTypeName+" "+inputName+") throws Exception"+body, null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
@@ -776,7 +779,7 @@ public class DTACodeGenerator {
 	}
 
 	private static String getMethodName(Resource res) {
-		return "OnCall";
+		return "onCall";
 	}
 	
 	private static String toCamelCase(String s) {

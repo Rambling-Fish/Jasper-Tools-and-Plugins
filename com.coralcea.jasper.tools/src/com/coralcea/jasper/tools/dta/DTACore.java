@@ -37,9 +37,9 @@ import com.hp.hpl.jena.vocabulary.OWL;
 
 public class DTACore  {
 
-	public static String FORMAT = "RDF/XML-ABBREV";
+	public static final String FORMAT = "RDF/XML-ABBREV";
 	
-	public static String IMPORT_POLICY = "import-policy.rdf";
+	public static final String IMPORT_POLICY = "import-policy.rdf";
 
 	private static ResourceListener resourceListener = new ResourceListener();
 	
@@ -85,10 +85,10 @@ public class DTACore  {
 		IContainer container = file.getParent();
 		OntModelSpec spec = containerToSpecMap.get(container);
 		if (spec == null) {
-			spec = new OntModelSpec(OntModelSpec.OWL_DL_MEM);
-			OntDocumentManager dm = new OntDocumentManager();
 			IFile policy = container.getFile(Path.fromOSString(IMPORT_POLICY));
+			OntDocumentManager dm = new OntDocumentManager();
 			configureDocumentManager(dm, policy);
+			spec = new OntModelSpec(OntModelSpec.OWL_DL_MEM);
 			spec.setDocumentManager(dm);
 			containerToSpecMap.put(container, spec);
 		}

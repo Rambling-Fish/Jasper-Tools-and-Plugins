@@ -79,8 +79,9 @@ public class DTAUtilities {
 		return properties;
 	}
 
-	public static Set<OntClass> getAllSubClasses(Resource element) {
+	public static Set<OntClass> getSelfAndAllSubClasses(Resource element) {
 		HashSet<OntClass> subclasses = new LinkedHashSet<OntClass>();
+		subclasses.add(element.as(OntClass.class));
 	    for (ExtendedIterator<OntClass> i = element.as(OntClass.class).listSubClasses(); i.hasNext(); )
 	    	subclasses.add(i.next().as(OntClass.class));
 	    return subclasses;
