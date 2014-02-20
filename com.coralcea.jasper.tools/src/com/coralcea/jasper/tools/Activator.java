@@ -73,6 +73,17 @@ public class Activator extends AbstractUIPlugin {
 		reg.put(JasperImages.POLICY, ImageDescriptor.createFromURL(getBundle().getEntry("icons/policy.png")));
 		reg.put(JasperImages.HELP, ImageDescriptor.createFromURL(getBundle().getEntry("icons/help.gif")));
 		reg.put(JasperImages.CODEGEN, ImageDescriptor.createFromURL(getBundle().getEntry("icons/codegen.png")));
+		reg.put(JasperImages.HOME, ImageDescriptor.createFromURL(getBundle().getEntry("icons/home.png")));
+		reg.put(JasperImages.UPARROW, ImageDescriptor.createFromURL(getBundle().getEntry("icons/uparrow.png")));
+		reg.put(JasperImages.REFRESH, ImageDescriptor.createFromURL(getBundle().getEntry("icons/refresh.png")));
+		reg.put(JasperImages.SERVER, ImageDescriptor.createFromURL(getBundle().getEntry("icons/server.png")));
+		reg.put(JasperImages.LAYOUT, ImageDescriptor.createFromURL(getBundle().getEntry("icons/layout.gif")));
+		reg.put(JasperImages.ZOOM_IN, ImageDescriptor.createFromURL(getBundle().getEntry("icons/zoom_in.gif")));
+		reg.put(JasperImages.ZOOM_OUT, ImageDescriptor.createFromURL(getBundle().getEntry("icons/zoom_out.gif")));
+		reg.put(JasperImages.IMPORT, ImageDescriptor.createFromURL(getBundle().getEntry("icons/import.png")));
+		reg.put(JasperImages.CAMERA, ImageDescriptor.createFromURL(getBundle().getEntry("icons/camera.gif")));
+		reg.put(JasperImages.SAVE, ImageDescriptor.createFromURL(getBundle().getEntry("icons/save.png")));
+		reg.put(JasperImages.REQUEST, ImageDescriptor.createFromURL(getBundle().getEntry("icons/request.png")));
 	}
 
 	public static Image getImage(String id) {

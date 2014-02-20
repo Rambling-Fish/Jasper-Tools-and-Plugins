@@ -19,7 +19,7 @@ public class SetPropertyCommand extends DTACommand {
 	}
 
 	@Override
-	public void store() {
+	public void prepare() {
 		oldValue = element.getPropertyValue(property);
 	}
 

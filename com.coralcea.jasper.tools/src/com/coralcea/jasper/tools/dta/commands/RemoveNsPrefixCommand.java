@@ -15,7 +15,7 @@ public class RemoveNsPrefixCommand extends DTACommand {
 	}
 	
 	@Override
-	public void store() {
+	public void prepare() {
 		oldURI = model.getNsPrefixURI(prefix);
 	}
 

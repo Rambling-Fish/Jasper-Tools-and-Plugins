@@ -8,6 +8,7 @@ import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.fieldassist.ControlDecoration;
 import org.eclipse.jface.fieldassist.FieldDecorationRegistry;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.graphics.Image;
@@ -32,30 +33,30 @@ public class DTANamespacesViewer extends DTAViewer {
 	
 	public DTANamespacesViewer(Composite parent, DTAEditor editor) {
 		super(parent, editor);
+		getControl().setText("Namespaces");
 	}
 	
 	@Override
 	public void refresh() {
 		if (content != null)
 			content.dispose();
-		content = createContent();
-		content.setFocus();
-		getControl().getBody().layout(true, true);
-		getControl().reflow(true);
+		content = createContent(getControl().getBody());
+		getControl().layout(true, true);
 		if (getEditor().getSite().getPage().getActivePart().equals(getEditor()))
 			getControl().setFocus();
 	}
 
-	protected Control createContent() {
-		final Composite composite = createComposite(getControl().getBody(), 1);
-		composite.setLayoutData(null);
+	protected Control createContent(Composite parent) {
+		parent.setLayout(new GridLayout());
+		ScrolledComposite scrollpane = createScrolledComposite(parent, 1);
+		Composite group = createComposite(scrollpane, 4);
+		scrollpane.setContent(group);
 
-		getControl().setText("Namespaces");
-
-		final Composite group = createComposite(composite, 1);
-		GridLayout layout = (GridLayout) group.getLayout();
-		layout.verticalSpacing = 0;
-		layout.marginHeight = 0;
+		createLabel(group, "Prefix", "The prefix of the namespace");
+		Label label = createLabel(group, "URI", "The URI of the namespace");
+		GridData data = new GridData();
+		data.horizontalSpan = 3;
+		label.setLayoutData(data);
 
 		final Map<String,String> nsMap = getInput().getNsPrefixMap();
 		final List<Button> buttons = new ArrayList<Button>(nsMap.size()*2+2);
@@ -64,20 +65,10 @@ public class DTANamespacesViewer extends DTAViewer {
 			if (s.equals("owl") || s.equals("rdf") || s.equals("rdfs") || s.equals("xsd") || s.equals(DTA.PREFIX))
 				continue;
 			
-			final Composite namespace = createComposite(group, 4);
-	        layout = (GridLayout) namespace.getLayout();
-	        layout.horizontalSpacing = 10;
-			
-			createLabel(namespace, "Prefix");
-			Label label = createLabel(namespace, "URI");
-			GridData data = new GridData();
-			data.horizontalSpan = 3;
-			label.setLayoutData(data);
-
-			final Text prefix = createText(namespace, 0, s);
-	        final Text uri = createText(namespace, 0, nsMap.get(s));
-	        final Button editSet = createButton(namespace, 0, "Edit");
-			final Button removeCancel = createButton(namespace, 0, "Remove");
+			final Text prefix = createText(group, 0, s);
+	        final Text uri = createText(group, 0, nsMap.get(s));
+	        final Button editSet = createButton(group, 0, "Edit");
+			final Button removeCancel = createButton(group, 0, "Remove");
 			
 			prefix.setEditable(false);
 	        prefix.addModifyListener(new NamespaceModifyListener(prefix, uri, editSet));
@@ -97,7 +88,6 @@ public class DTANamespacesViewer extends DTAViewer {
 						prefix.setEditable(true);
 						prefix.setFocus();
 						uri.setEditable(true);
-						namespace.setBackground(namespace.getDisplay().getSystemColor(SWT.COLOR_INFO_BACKGROUND));
 				        editSet.setData("prefix", prefix.getText());
 				        editSet.setData("uri", uri.getText());
 						editSet.setText("Set");
@@ -125,7 +115,6 @@ public class DTANamespacesViewer extends DTAViewer {
 						prefix.setEditable(false);
 						uri.setText((String)editSet.getData("uri"));
 						uri.setEditable(false);
-						namespace.setBackground(null);
 						editSet.setText("Edit");
 						removeCancel.setText("Remove");
 						for (Button button : buttons)
@@ -136,20 +125,19 @@ public class DTANamespacesViewer extends DTAViewer {
 			});
 		}
 		
-		createLabel(group, "Create new:");
+		label = createLabel(group, "Create new:", "Add a new namespace");
+		data = new GridData();
+		data.horizontalSpan = 4;
+		label.setLayoutData(data);
 		
-		final Composite namespace = createComposite(group, 4);
-		layout = (GridLayout) namespace.getLayout();
-		layout.horizontalSpacing = 10;
-		
-		final Text prefix = createText(namespace, 0, "");
-        final Text uri = createText(namespace, 0, "");
-        final Button add = createButton(namespace, 0, " Add " );
-        final Button clear = createButton(namespace, 0, " Clear ");
+		final Text prefix = createText(group, 0, "");
+        final Text uri = createText(group, 0, "");
+        final Button add = createButton(group, 0, "Add" );
+        final Button clear = createButton(group, 0, " Clear   ");
 		
         prefix.addModifyListener(new NamespaceModifyListener(prefix, uri, add));
         prefix.setFocus();
-		GridData data = (GridData)prefix.getLayoutData();
+		data = (GridData)prefix.getLayoutData();
         data.grabExcessHorizontalSpace=false;
         data.widthHint = 80;
 		
@@ -179,7 +167,8 @@ public class DTANamespacesViewer extends DTAViewer {
 			}
 		});
 
-		return composite;
+		scrollpane.setMinSize(group.computeSize(SWT.DEFAULT, SWT.DEFAULT));
+		return scrollpane;
 	}
 
     private Image getErrorImage() {

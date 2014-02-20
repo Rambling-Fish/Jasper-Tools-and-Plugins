@@ -9,6 +9,8 @@ import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IDialogSettings;
+import org.eclipse.jface.viewers.DelegatingStyledCellLabelProvider.IStyledLabelProvider;
+import org.eclipse.jface.viewers.StyledString;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Shell;
@@ -24,12 +26,36 @@ import com.hp.hpl.jena.rdf.model.Resource;
 public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelectionDialog {
 
 	private static final String DIALOG_SETTINGS = "DTASelectionDialogSettings";
-	private static final DTALabelProvider labelProvider = new DTALabelProvider();
 	private static final int ID_NONE = -555;
-	
+	private static final int ID_NEW = -666;
+
 	private OntModel model;
 	private Collection<T> resources;
 	private boolean hasNone;
+	
+	private static final DTALabelProvider labelProvider = new DTALabelProvider2();
+	private static class DTALabelProvider2 extends DTALabelProvider implements IStyledLabelProvider {
+
+		@Override
+		public String getText(Object element) {
+			if (element != null) {
+				Resource r = (Resource)element;
+				return r.getLocalName()+" - "+super.getText(element);
+			}
+			return "";
+		}
+
+		@Override
+		public StyledString getStyledText(Object element) {
+			StyledString s = new StyledString(getText(element));
+			int offset = s.getString().indexOf("-");
+			if (offset > -1) {
+				s.setStyle(offset, s.length() - offset, StyledString.QUALIFIER_STYLER);
+			}
+			return s;
+		}
+		
+	}
 	
 	@SuppressWarnings("unchecked")
 	public static <T extends Resource> T run(String title, OntModel model, Collection<T> resources, boolean hasNone) {
@@ -40,6 +66,8 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 			return (T) dialog.getFirstResult();
 		else if (code == ID_NONE)
 			return (T) DTA.None;
+		else if (code == ID_NEW)
+			return (T) DTA.New;
 		return null;
 	}
 	
@@ -58,12 +86,13 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 		super.createButtonsForButtonBar(parent);
 		if (hasNone)
 			createButton(parent, ID_NONE, "None", false);
+		createButton(parent, ID_NEW, "New...", false);
 	}
 
 	@Override
 	protected void buttonPressed(int buttonId) {
-		if (ID_NONE == buttonId) {
-			setReturnCode(ID_NONE);
+		if (ID_NONE == buttonId || ID_NEW == buttonId) {
+			setReturnCode(buttonId);
 			close();
 		} else
 			super.buttonPressed(buttonId);

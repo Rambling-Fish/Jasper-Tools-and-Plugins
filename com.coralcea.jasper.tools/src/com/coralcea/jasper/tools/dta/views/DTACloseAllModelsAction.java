@@ -1,7 +1,5 @@
 package com.coralcea.jasper.tools.dta.views;
 
-import java.util.Collection;
-
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -50,14 +48,9 @@ public class DTACloseAllModelsAction extends Action {
 
 	@Override
 	public void run() {
-		final Collection<IFile> files = DTACore.getLoadedModelFiles();
-		
-		for (IFile file : files)
-			DTACore.unloadModel(file);
-		
 		new UIJob("Close All DATA Models") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
-				for (IFile file : files) {
+				for (IFile file : DTACore.getLoadedModelFiles()) {
 					for (IWorkbenchPage p : page.getWorkbenchWindow().getPages()) {
 						IEditorReference[] editors = p.findEditors(new FileEditorInput(file), DTAEditor.ID, IWorkbenchPage.MATCH_ID|IWorkbenchPage.MATCH_INPUT);
 						for (IEditorReference editor : editors)
@@ -66,6 +59,8 @@ public class DTACloseAllModelsAction extends Action {
 					
 					if (viewer instanceof AbstractTreeViewer)
 						((AbstractTreeViewer)viewer).collapseToLevel(file, AbstractTreeViewer.ALL_LEVELS);
+
+					DTACore.unloadModel(file);
 				}
 				return Status.OK_STATUS;						
 			}

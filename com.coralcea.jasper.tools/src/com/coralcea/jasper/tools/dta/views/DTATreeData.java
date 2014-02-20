@@ -9,6 +9,7 @@ import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.ontology.Ontology;
+import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 public class DTATreeData {
@@ -16,8 +17,11 @@ public class DTATreeData {
 	private Resource element;
 	private Object parent;
 
-	public static DTATreeData createRoot(OntModel model, Object parent) {
-		return new DTATreeData(model.listOntologies().next(), parent);
+	public static DTATreeData[] createRoots(OntModel model, Object parent) {
+		List<DTATreeData> roots = new ArrayList<DTATreeData>();
+		for (Iterator<Ontology> i = model.listOntologies(); i.hasNext();)
+			roots.add(new DTATreeData(i.next(), parent));
+		return roots.toArray(new DTATreeData[0]);
 	}
 
 	private DTATreeData(Resource element, Object parent) {
@@ -45,41 +49,34 @@ public class DTATreeData {
 	}
 
 	protected List<?> getChildElements() {
+		OntResource modelElement = (element.getModel()!=null) 
+			? element.as(OntResource.class)
+			: ((DTATreeData)getParent()).getElement().as(OntResource.class);
+
 		if (element == DTA.DTAs) {
-			Ontology ont = ((DTATreeData)getParent()).getElement().as(Ontology.class);
-			return filter(ont.getOntModel().listIndividuals(DTA.DTA));
-		} else if (element == DTA.Classes) {
-			Ontology ont = ((DTATreeData)getParent()).getElement().as(Ontology.class);
-			return filter(ont.getOntModel().listHierarchyRootClasses());
+			Ontology ont = modelElement.as(Ontology.class);
+			return DTAUtilities.listDefinedResources(ont, DTA.DTA).toList();
+		} else if (element == DTA.Types) {
+			Ontology ont = modelElement.as(Ontology.class);
+			return DTAUtilities.listDefinedClasses(ont).toList();
 		} else if (element == DTA.Properties) {
-			Ontology ont = ((DTATreeData)getParent()).getElement().as(Ontology.class);
-			return filter(ont.getOntModel().listAllOntProperties());
-		} 
-		OntResource modelElement = element.as(OntResource.class);
-		if (DTAUtilities.isDTA(modelElement)) {
-			return filter(modelElement.listPropertyValues(DTA.operation));
-		} else if (DTAUtilities.isClass(modelElement)) {
-			return filter(modelElement.asClass().listSubClasses());
+			Ontology ont = modelElement.as(Ontology.class);
+			return DTAUtilities.listDefinedProperties(ont).toList();
 		} else if (DTAUtilities.isOntology(modelElement)) {
-			ArrayList<Resource> groups = new ArrayList<Resource>();
-			groups.add(DTA.DTAs);
-			groups.add(DTA.Classes);
-			groups.add(DTA.Properties);
-			return groups;
+			ArrayList<Resource> children = new ArrayList<Resource>();
+			children.add(DTA.DTAs);
+			children.add(DTA.Types);
+			children.add(DTA.Properties);
+			return children;
+		} else if (DTAUtilities.isDTA(modelElement)) {
+			ArrayList<RDFNode> children = new ArrayList<RDFNode>();
+			children.addAll(DTAUtilities.listObjects(modelElement, DTA.operation));
+			children.addAll(DTAUtilities.listObjects(modelElement, DTA.request));
+			return children;
 		}
 		return null;
 	}
 
-	private List<OntResource> filter(Iterator<?> ch) {
-		ArrayList<OntResource> children = new ArrayList<OntResource>();
-		while (ch.hasNext()) {
-			OntResource r = (OntResource) ch.next();
-			if (DTAUtilities.isDefinedByBase(r))
-				children.add(r);
-		}
-		return children;
-	}
-	
 	@Override
 	public String toString() {
 		return element.getURI();

@@ -1,5 +1,6 @@
 package com.coralcea.jasper.tools.dta.commands;
 
+import com.coralcea.jasper.tools.dta.DTACore;
 import com.hp.hpl.jena.ontology.OntModel;
 
 public class ChangeImportCommand extends DTACommand {
@@ -16,29 +17,23 @@ public class ChangeImportCommand extends DTACommand {
 	}
 
 	@Override
-	public void store() {
+	public void prepare() {
 	}
 
 	@Override
 	public void undo() {
 		if (load) {
-			model.getDocumentManager().unloadImport(model, importedURI);
-			//Hack: to get the model to not forget the cached import
-			model.getDocumentManager().getFileManager().removeCacheModel(importedURI);
-			model.getSpecification().getImportModelMaker().removeModel(importedURI);
+			DTACore.unloadImport(model, importedURI);
 		} else
-			model.getDocumentManager().loadImport(model, importedURI);
+			DTACore.loadImport(model, importedURI);
 	}
 
 	@Override
 	public void redo() {
 		if (load)
-			model.getDocumentManager().loadImport(model, importedURI);
+			DTACore.loadImport(model, importedURI);
 		else {
-			model.getDocumentManager().unloadImport(model, importedURI);
-			//Hack: to get the model to not forget the cached import
-			model.getDocumentManager().getFileManager().removeCacheModel(importedURI);
-			model.getSpecification().getImportModelMaker().removeModel(importedURI);
+			DTACore.unloadImport(model, importedURI);
 		}
 	}
 

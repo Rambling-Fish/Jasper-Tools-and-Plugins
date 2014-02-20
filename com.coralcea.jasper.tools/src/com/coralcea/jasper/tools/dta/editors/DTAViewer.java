@@ -1,8 +1,9 @@
 package com.coralcea.jasper.tools.dta.editors;
 
-import org.eclipse.core.resources.IFile;
+import org.eclipse.gef.ui.actions.SaveAction;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IToolBarManager;
+import org.eclipse.jface.action.Separator;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.ILabelProvider;
@@ -11,14 +12,13 @@ import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.Viewer;
 import org.eclipse.swt.SWT;
+import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.TraverseEvent;
 import org.eclipse.swt.events.TraverseListener;
 import org.eclipse.swt.graphics.Image;
-import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
-import org.eclipse.swt.widgets.Combo;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
@@ -27,68 +27,96 @@ import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
-import org.eclipse.ui.IFileEditorInput;
 import org.eclipse.ui.PlatformUI;
+import org.eclipse.ui.forms.widgets.Form;
 import org.eclipse.ui.forms.widgets.FormToolkit;
 import org.eclipse.ui.forms.widgets.ImageHyperlink;
-import org.eclipse.ui.forms.widgets.ScrolledForm;
 import org.eclipse.ui.forms.widgets.Section;
 
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.JasperImages;
-import com.coralcea.jasper.tools.dta.codegen.DTACodeGenerator;
+import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 public abstract class DTAViewer extends Viewer {
 
 	private DTAEditor editor;
-	private ScrolledForm form;
+	private Form form;
 	private OntModel model;
 	private FormToolkit toolkit;
 	
 	public DTAViewer(Composite parent, DTAEditor editor) {
 		this.editor = editor;
 		this.toolkit = editor.getFormToolkit();
-		form = toolkit.createScrolledForm(parent);
-		toolkit.decorateFormHeading(form.getForm());
-		form.getBody().setLayout(new FillLayout());
+		form = toolkit.createForm(parent);
+		toolkit.decorateFormHeading(form);
 		addActions();
 	}
 	
-	protected void addActions() {
-		IToolBarManager manager = form.getToolBarManager();
+	protected final void addActions() {
+		addActionsToToolBar(form.getToolBarManager());
+		form.updateToolBar();
+	}
+
+	protected void addActionsToToolBar(IToolBarManager manager) {
 		Action action;
 		
-		action = new Action("code gen") { //$NON-NLS-1$
+		manager.add(new Separator("Common"));
+		manager.add(new Separator("Viewer"));
+		manager.add(new Separator("Basic"));
+		
+		if (!DTAUtilities.isLibrary(getEditor().getModel().listOntologies().next())) {
+			action = new Action("Code Gen") {
+				public void run() {
+					DTACodeGenerator.run(getEditor());
+				}
+			};
+			action.setToolTipText("Generate code");
+			action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.CODEGEN));
+			manager.appendToGroup("Common", action);
+		}
+		
+		action = new Action("Download Model") {
 			public void run() {
-				IFile file = ((IFileEditorInput)getEditor().getFileEditorInput()).getFile();
-				DTACodeGenerator.run(getEditor().getSite().getShell(), file);
+				DTADownloadJasperModel.run(getEditor());
 			}
 		};
-		action.setToolTipText("Generate Code");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.CODEGEN));
-		manager.add(action);
+		action.setToolTipText("Download Jasper model");
+		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.SERVER));
+		manager.appendToGroup("Common", action);
 
-		action = new Action("import policy") { //$NON-NLS-1$
+		action = new Action("Import Policy") {
 			public void run() {
-				DTAImportPolicyDialog.run(getEditor().getSite().getShell(), editor);
+				DTAImportPolicyDialog.openToEdit(getEditor().getSite().getShell(), editor);
 			}
 		};
-		action.setToolTipText("Import Policy");
+		action.setToolTipText("Edit import policy");
 		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.POLICY));
-		manager.add(action);
+		manager.appendToGroup("Common", action);
 
-		action = new Action("help") { //$NON-NLS-1$
+		action = new Action("Reload model") {
+			public void run() {
+				getEditor().reload();
+			}
+		};
+		action.setToolTipText("Reload model");
+		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.REFRESH));
+		manager.appendToGroup("Basic", action);
+				
+		action = new SaveAction(getEditor());
+		action.setToolTipText("Save model");
+		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.SAVE));
+		manager.appendToGroup("Basic", action);
+
+		action = new Action("Help") {
 			public void run() {
 				PlatformUI.getWorkbench().getHelpSystem().displayHelp("dd");
 			}
 		};
-		action.setToolTipText("Help");
+		action.setToolTipText("Show help");
 		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.HELP));
-		manager.add(action);
-		
-		form.updateToolBar();
+		manager.appendToGroup("Basic", action);
 	}
 
 	protected DTAEditor getEditor() {
@@ -96,7 +124,7 @@ public abstract class DTAViewer extends Viewer {
 	}
 	
 	@Override
-	public ScrolledForm getControl() {
+	public Form getControl() {
 		return form;
 	}
 	
@@ -130,8 +158,11 @@ public abstract class DTAViewer extends Viewer {
 		if (newElement != getSelectedElement()) {
 			setSelectedElement(newElement);
 			if (reveal)
-				refresh();
+				revealSelectedElement();
 		}
+	}
+	
+	protected void revealSelectedElement() {
 	}
 
 	public Resource getSelectedElement() {
@@ -147,27 +178,19 @@ public abstract class DTAViewer extends Viewer {
 	
 	protected Composite createComposite(Composite parent, int columns) {
 		Composite composite = toolkit.createComposite(parent, SWT.NONE);
-        GridData data = new GridData();
-        data.horizontalAlignment = GridData.FILL;
-        data.grabExcessHorizontalSpace=true;
-        composite.setLayoutData(data);
-        GridLayout layout = new GridLayout();
-        layout.numColumns = columns;
-        composite.setLayout(layout);
+        composite.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, false));
+        composite.setLayout(new GridLayout(columns, false));
 		return composite;
 	}
 
-	protected Composite createGroup(Composite parent, int columns) {
-        Composite group = toolkit.createComposite(parent, SWT.BORDER);
-        GridData data = new GridData();
-        data.horizontalAlignment = GridData.FILL;
-        data.grabExcessHorizontalSpace=true;
-        group.setLayoutData(data);
-        GridLayout layout = new GridLayout();
-        layout.horizontalSpacing = 0;
-        layout.numColumns = columns;
-        group.setLayout(layout);
-		return group;
+	protected ScrolledComposite createScrolledComposite(Composite parent, int columns) {
+		ScrolledComposite composite = new ScrolledComposite(parent, SWT.V_SCROLL|SWT.H_SCROLL);
+		toolkit.adapt(composite);
+		composite.setExpandHorizontal(true);
+		composite.setExpandVertical(true);
+        composite.setLayoutData(new GridData(GridData.FILL, GridData.FILL, true, true));
+        composite.setLayout(new GridLayout(columns, false));
+		return composite;
 	}
 	
 	protected Section createSection(Composite parent, String title, String description) {
@@ -185,8 +208,10 @@ public abstract class DTAViewer extends Viewer {
         return section;
 	}
 	
-	protected Label createLabel(Composite parent, String s) {
-        return toolkit.createLabel(parent, s, SWT.NONE);
+	protected Label createLabel(Composite parent, String text, String tooltip) {
+        Label l = toolkit.createLabel(parent, text, SWT.NONE);
+        l.setToolTipText(tooltip);
+        return l;
 	}
 	
 	protected Text createText(Composite parent, int style, String s) {
@@ -216,16 +241,13 @@ public abstract class DTAViewer extends Viewer {
 	}
 
 	protected ComboViewer createCombo(Composite parent, int style, ILabelProvider provider, Object[] options, Object selection) {
-        Combo combo = new Combo(parent, style);
-        ComboViewer viewer = new ComboViewer(combo);
+        ComboViewer viewer = new ComboViewer(parent, style);
         viewer.setContentProvider(ArrayContentProvider.getInstance());
-        viewer.setLabelProvider(provider);
+        if (provider != null)
+        	viewer.setLabelProvider(provider);
         viewer.setInput(options);
-        viewer.setSelection(new StructuredSelection(selection), true);
-        GridData data = new GridData();
-        data.verticalAlignment = GridData.CENTER;
-        data.grabExcessHorizontalSpace=true;
-        combo.setLayoutData(data);
+        if (selection!=null)
+        	viewer.setSelection(new StructuredSelection(selection), true);
         return viewer;
 	}
 

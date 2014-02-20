@@ -13,7 +13,15 @@
             category="com.coralcea.jasper.wizards"
             class="com.coralcea.jasper.tools.dta.wizards.DTAModelWizard"
             icon="icons/file.gif">
-      </wizard>   </extension>
+      </wizard>   
+      <wizard
+            id="com.coralcea.jasper.wizards.DTALibrary"
+            name="DTA Library"
+            category="com.coralcea.jasper.wizards"
+            class="com.coralcea.jasper.tools.dta.wizards.DTALibraryWizard"
+            icon="icons/file.gif">
+      </wizard>   
+   </extension>
    <extension
          point="org.eclipse.ui.editors">
       <editor

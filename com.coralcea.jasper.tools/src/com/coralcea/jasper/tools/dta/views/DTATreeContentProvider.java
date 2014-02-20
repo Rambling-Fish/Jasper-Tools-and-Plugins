@@ -55,11 +55,9 @@ public class DTATreeContentProvider implements ITreeContentProvider, IResourceCh
 		DTATreeData[] children = null;
 		if (parentElement instanceof IFile) {
 			IFile modelFile = (IFile) parentElement;
-			if(DTA.EXTENSION.equals(modelFile.getFileExtension())) {				
-				DTATreeData root = createRoot(modelFile);
-				if (root != null)
-					children = new DTATreeData[] {root};
-			}
+			String extension = modelFile.getFileExtension();
+			if(DTA.EXTENSION.equals(extension))			
+				children = createRoot(modelFile);
 		} else if (parentElement instanceof DTATreeData) {
 			DTATreeData data = (DTATreeData) parentElement;
 			children = data.getChildren();
@@ -82,7 +80,8 @@ public class DTATreeContentProvider implements ITreeContentProvider, IResourceCh
 			DTATreeData data = (DTATreeData) element;
 			return data.getChildren() != null;
 		} else if(element instanceof IFile) {
-			return DTA.EXTENSION.equals(((IFile) element).getFileExtension());
+			String extension = ((IFile) element).getFileExtension();
+			return (DTA.EXTENSION.equals(extension));				
 		}
 		return false;
 	}
@@ -92,7 +91,8 @@ public class DTATreeContentProvider implements ITreeContentProvider, IResourceCh
 		IResource resource = delta.getResource();
 		if (resource instanceof IFile) {
 			final IFile file = (IFile) resource;
-			if (DTA.EXTENSION.equals(file.getFileExtension()))
+			String extension = file.getFileExtension();
+			if(DTA.EXTENSION.equals(extension))			
 				refresh(file);
 			return false;
 		}
@@ -114,10 +114,10 @@ public class DTATreeContentProvider implements ITreeContentProvider, IResourceCh
 		refresh(file);
 	}
 
-	private synchronized DTATreeData createRoot(final IFile modelFile) { 
+	private synchronized DTATreeData[] createRoot(final IFile modelFile) { 
 		try {
-			OntModel model = DTACore.getModel(modelFile);
-			return DTATreeData.createRoot(model, modelFile);
+			OntModel model = DTACore.getPossiblyLoadedModel(modelFile);
+			return DTATreeData.createRoots(model, modelFile);
 		} catch (CoreException e) {
 			Activator.getDefault().log("Error loading DTA model", e);
 			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, e.getMessage());

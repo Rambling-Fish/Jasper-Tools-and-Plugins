@@ -18,7 +18,7 @@ public class RemovePropertyCommand extends DTACommand {
 	}
 
 	@Override
-	public void store() {
+	public void prepare() {
 	}
 
 	@Override

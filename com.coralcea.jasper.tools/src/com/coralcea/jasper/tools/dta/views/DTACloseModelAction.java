@@ -55,11 +55,6 @@ public class DTACloseModelAction extends Action {
 
 	@Override
 	public void run() {
-		for (DTATreeData data : datas) {
-			IFile file = (IFile)data.getParent();
-			DTACore.unloadModel(file);
-		}
-		
 		new UIJob("Close DATA Model") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
 				for (DTATreeData data : datas) {
@@ -73,6 +68,8 @@ public class DTACloseModelAction extends Action {
 					
 					if (viewer instanceof AbstractTreeViewer)
 						((AbstractTreeViewer)viewer).collapseToLevel(file, AbstractTreeViewer.ALL_LEVELS);
+					
+					DTACore.unloadModel(file);
 				}
 				return Status.OK_STATUS;						
 			}

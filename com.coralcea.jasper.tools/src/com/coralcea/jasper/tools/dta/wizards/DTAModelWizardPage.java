@@ -1,35 +1,39 @@
 package com.coralcea.jasper.tools.dta.wizards;
 
-import org.eclipse.core.resources.IContainer;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
-import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.dialogs.IDialogPage;
+import org.eclipse.jface.viewers.ArrayContentProvider;
+import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredSelection;
+import org.eclipse.jface.viewers.LabelProvider;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
+import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.viewers.ViewerFilter;
 import org.eclipse.jface.wizard.WizardPage;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
-import org.eclipse.swt.events.SelectionAdapter;
-import org.eclipse.swt.events.SelectionEvent;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
-import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Text;
-import org.eclipse.ui.dialogs.ContainerSelectionDialog;
 
+import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 
 public class DTAModelWizardPage extends WizardPage {
 
 	public static final String NATURE = "org.mule.tooling.core.muleNature";
 	
-	private Text folderName;
-	private Text modelName;
+	private ComboViewer projectName;
 	private Text modelURI;
+	private Text modelNamespace;
 	private IStructuredSelection selection;
 	
 	/**
@@ -49,55 +53,70 @@ public class DTAModelWizardPage extends WizardPage {
 	 */
 	public void createControl(Composite parent) {
 		Composite container = new Composite(parent, SWT.NULL);
-		GridLayout layout = new GridLayout();
-		container.setLayout(layout);
-		layout.numColumns = 3;
-		layout.verticalSpacing = 9;
+		container.setLayout(new GridLayout(2, false));
 		
 		Label label = new Label(container, SWT.NULL);
-		label.setText("Parent folder:");
-		label.setToolTipText("The path to the parent folder");
+		label.setText("Mule &project:");
+		label.setToolTipText("The path to a Mule priject");
 
-		folderName = new Text(container, SWT.BORDER | SWT.SINGLE);
-		GridData gd = new GridData(GridData.FILL_HORIZONTAL);
-		folderName.setLayoutData(gd);
-		folderName.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
+		projectName = new ComboViewer(container, SWT.READ_ONLY);
+		projectName.setContentProvider(ArrayContentProvider.getInstance());
+		projectName.getCombo().setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		projectName.setLabelProvider(new LabelProvider() {
+			public String getText(Object element) {
+				return ((IProject)element).getName();
+			}
+        });
+		projectName.addFilter(new ViewerFilter() {
+			public boolean select(Viewer viewer, Object parentElement, Object element) {
+				return DTAUtilities.hasNature((IProject)element, NATURE);
+			}
+		});
+		projectName.addSelectionChangedListener(new ISelectionChangedListener() {
+			public void selectionChanged(SelectionChangedEvent event) {
 				dialogChanged();
+				IProject project = getProject();
+				if (project != null) {
+					String modelName = project.getName().toLowerCase();
+					String uri = getModelURI();
+					if (uri.length()==0)
+						modelURI.setText("http://mycompany.com/"+modelName);
+					else {
+						uri = uri.substring(0, uri.lastIndexOf('/')+1);
+						modelURI.setText(uri+modelName);
+					}
+				}
 			}
 		});
-
-		Button button = new Button(container, SWT.PUSH);
-		button.setText("Browse...");
-		button.addSelectionListener(new SelectionAdapter() {
-			public void widgetSelected(SelectionEvent e) {
-				handleBrowse();
-			}
-		});
-		
+		projectName.setInput(ResourcesPlugin.getWorkspace().getRoot().getProjects());
+        
 		label = new Label(container, SWT.NULL);
-		label.setText("&Model Name:");
-		label.setToolTipText("The name of a DTA model (.dta)");
-
-		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
-		gd = new GridData(GridData.FILL_HORIZONTAL);
-		gd.horizontalSpan = 2;
-		modelName.setLayoutData(gd);
-		modelName.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				dialogChanged();
-			}
-		});
-
-		label = new Label(container, SWT.NULL);
-		label.setText("&Model URI:");
-		label.setToolTipText("A unique URI for the model");
+		label.setText("Model &URI:");
+		label.setToolTipText("The unique URI of the DTA model");
 
 		modelURI = new Text(container, SWT.BORDER | SWT.SINGLE);
-		gd = new GridData(GridData.FILL_HORIZONTAL);
-		gd.horizontalSpan = 2;
-		modelURI.setLayoutData(gd);
+		modelURI.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		modelURI.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				dialogChanged();
+				String uri = getModelURI();
+				String namespace = getModelNamespace();
+				if (namespace.length()==0)
+					modelNamespace.setText(uri+"#");
+				else {
+					String separator = namespace.substring(namespace.length()-1);
+					modelNamespace.setText(uri+separator);
+				}
+			}
+		});
+
+		label = new Label(container, SWT.NULL);
+		label.setText("Model &Namespace:");
+		label.setToolTipText("The default namespace of the DTA model");
+
+		modelNamespace = new Text(container, SWT.BORDER | SWT.SINGLE);
+		modelNamespace.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		modelNamespace.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
 				dialogChanged();
 			}
@@ -119,30 +138,9 @@ public class DTAModelWizardPage extends WizardPage {
 			if (obj instanceof IAdaptable)
 				obj = ((IAdaptable)obj).getAdapter(IResource.class);
 			if (obj instanceof IResource) {
-				IContainer container;
-				if (obj instanceof IContainer)
-					container = (IContainer) obj;
-				else
-					container = ((IResource) obj).getParent();
-			   folderName.setText(container.getFullPath().toString());
-			}
-		}
-		modelName.setText("Model1");
-		modelURI.setText("http://www.xyz.org/model1");
-	}
-
-	/**
-	 * Uses the standard container selection dialog to choose the new value for
-	 * the container field.
-	 */
-
-	private void handleBrowse() {
-		ContainerSelectionDialog dialog = new ContainerSelectionDialog(
-				getShell(), ResourcesPlugin.getWorkspace().getRoot(), false, null);
-		if (dialog.open() == ContainerSelectionDialog.OK) {
-			Object[] result = dialog.getResult();
-			if (result.length == 1) {
-				folderName.setText(((Path) result[0]).toString());
+				IProject project = ((IResource) obj).getProject();
+				if (DTAUtilities.hasNature(project, NATURE))
+					projectName.setSelection(new StructuredSelection(project));
 			}
 		}
 	}
@@ -152,29 +150,29 @@ public class DTAModelWizardPage extends WizardPage {
 	 */
 
 	private void dialogChanged() {
-		IResource container = ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(getFolderName()));
-
-		if (getFolderName().length() == 0) {
-			updateStatus("A folder must be specified");
+		IProject project = getProject();
+		if (project == null) {
+			updateStatus("Mule project must be specified");
 			return;
 		}
-		if (container == null || !(container instanceof IContainer)) {
-			updateStatus("Folder must exist");
-			return;
-		}
-		if (!container.isAccessible()) {
-			updateStatus("Folder must be writable");
+		if (!project.isAccessible()) {
+			updateStatus("Project must be writable");
 			return;
 		}
 		
-		IResource model = ((IContainer)container).findMember(getModelName()+".dta");
-		
+		IResource model = project.findMember("src/main/app/"+project.getName()+"."+DTA.EXTENSION);
 		if (model != null && model.exists()) {
-			updateStatus("Model already exists");
+			updateStatus("DTA model already exists for this project");
 			return;
 		}
+		
 		if (!DTAUtilities.isValidURI(getModelURI())) {
-			updateStatus("Invalid Model URI");
+			updateStatus("Invalid model URI");
+			return;
+		}
+
+		if (!DTAUtilities.isValidNsURI(getModelNamespace())) {
+			updateStatus("Invalid model namespace");
 			return;
 		}
 
@@ -186,16 +184,16 @@ public class DTAModelWizardPage extends WizardPage {
 		setPageComplete(message == null);
 	}
 
-	public String getFolderName() {
-		return folderName.getText();
-	}
-
-	public String getModelName() {
-		return modelName.getText();
+	public IProject getProject() {
+		return (IProject) ((IStructuredSelection)projectName.getSelection()).getFirstElement();
 	}
 
 	public String getModelURI() {
 		return modelURI.getText();
+	}
+
+	public String getModelNamespace() {
+		return modelNamespace.getText();
 	}
 
 }

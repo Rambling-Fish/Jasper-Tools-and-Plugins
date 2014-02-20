@@ -23,4 +23,26 @@ public interface JasperImages {
 	public static final String HELP = "Help";
 
 	public static final String CODEGEN = "CodeGen";
+
+	public static final String HOME = "Home";
+
+	public static final String UPARROW = "UpArrow";
+
+	public static final String REFRESH = "Refresh";
+
+	public static final String SERVER = "Server";
+
+	public static final String LAYOUT = "Layout";
+
+	public static final String ZOOM_IN = "Zoom_In";
+
+	public static final String ZOOM_OUT = "Zoom_Out";
+
+	public static final String IMPORT = "Import";
+
+	public static final String CAMERA = "Camera";
+
+	public static final String SAVE = "Save";
+
+	public static final String REQUEST = "Request";
 }

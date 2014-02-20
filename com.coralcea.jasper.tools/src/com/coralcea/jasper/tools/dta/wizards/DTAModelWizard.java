@@ -2,9 +2,8 @@ package com.coralcea.jasper.tools.dta.wizards;
 
 import java.lang.reflect.InvocationTargetException;
 
-import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.resources.ResourcesPlugin;
+import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
@@ -24,6 +23,7 @@ import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.progress.UIJob;
 
 import com.coralcea.jasper.tools.Activator;
+import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
 import com.coralcea.jasper.tools.dta.editors.DTAEditor;
 import com.hp.hpl.jena.ontology.OntModel;
@@ -55,13 +55,13 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 	 * using wizard as execution context.
 	 */
 	public boolean performFinish() {
-		final String folderName = page.getFolderName();
-		final String modelName = page.getModelName();
+		final IProject project = page.getProject();
 		final String modelURI = page.getModelURI();
+		final String modelNamespace = page.getModelNamespace();
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException {
 				try {
-					doFinish(folderName, modelName, modelURI, monitor);
+					doFinish(project, modelURI, modelNamespace, monitor);
 				} catch (CoreException e) {
 					throw new InvocationTargetException(e);
 				} finally {
@@ -81,17 +81,17 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 		return true;
 	}
 	
-	private void doFinish(String containerName, String modelName, String modelURI, IProgressMonitor monitor) throws CoreException {
-		monitor.beginTask("Creating " + modelName, 1);
-		IContainer container = (IContainer) ResourcesPlugin.getWorkspace().getRoot().findMember(new Path(containerName));
-		final IFile file = (IFile) container.getFile(Path.fromOSString(modelName+".dta"));
+	private void doFinish(IProject project, String modelURI, String modelNamespace, IProgressMonitor monitor) throws CoreException {
+		monitor.beginTask("Creating model", 1);
+		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+project.getName()+"."+DTA.EXTENSION));
 		
-		OntModel model = DTACore.createModel(file);
-		model.setNsPrefix("", modelURI+"#");
+		OntModel model = DTACore.createNewModel(file);
+		model.setNsPrefix("", modelNamespace);
 		model.createOntology(modelURI);
+		model.createIndividual(modelNamespace+project.getName(), DTA.DTA);
 		
 		try {
-			DTACore.saveModel(model, file, monitor);
+			DTACore.saveModel(model, file, false, monitor);
 		} catch (Exception e) {
 		    Activator.getDefault().log("Failed to create new DTA model", e);
 		}

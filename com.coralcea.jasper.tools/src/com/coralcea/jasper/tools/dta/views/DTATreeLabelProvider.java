@@ -45,18 +45,14 @@ public class DTATreeLabelProvider extends DTALabelProvider implements IStyledLab
 		if (element instanceof DTATreeData) {
 			DTATreeData data = (DTATreeData) element;
 			Resource modelElement = (Resource) data.getElement();
-			if (modelElement == DTA.DTAs || modelElement == DTA.Classes || modelElement == DTA.Properties)
+			if (modelElement == DTA.DTAs || modelElement == DTA.Types || modelElement == DTA.Properties)
 				return getDescription(data.getParent());
 			else if (DTAUtilities.isOntology(modelElement))
 				return "Model "+modelElement.getLocalName();
-			else if (DTAUtilities.isClass(modelElement))
-				return "Class "+modelElement.getLocalName();
 			else if (DTAUtilities.isProperty(modelElement))
 				return "Property "+modelElement.getLocalName();
-			else if (DTAUtilities.isDTA(modelElement))
-				return "DTA "+modelElement.getLocalName();
-			else if (DTAUtilities.isOperation(modelElement))
-				return "Operation "+modelElement.getLocalName();
+			else
+				return DTAUtilities.getRDFType(modelElement).getLocalName()+" "+modelElement.getLocalName();
 		}
 		return null;
 	}

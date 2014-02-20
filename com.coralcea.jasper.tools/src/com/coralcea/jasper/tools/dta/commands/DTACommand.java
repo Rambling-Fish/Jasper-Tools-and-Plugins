@@ -13,10 +13,14 @@ public class DTACommand extends Command {
 	
 	@Override
 	public final void execute() {
-		store();
+		prepare();
 		redo();
 	}
 	
-	protected void store() {}
+	@Override
+	public void redo() {
+	}
+
+	protected void prepare() {}
 	
 }

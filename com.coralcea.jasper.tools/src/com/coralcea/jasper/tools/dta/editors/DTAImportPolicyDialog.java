@@ -1,20 +1,21 @@
 package com.coralcea.jasper.tools.dta.editors;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
-import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.CellEditor;
 import org.eclipse.jface.viewers.ColumnLabelProvider;
 import org.eclipse.jface.viewers.EditingSupport;
 import org.eclipse.jface.viewers.ICellEditorValidator;
+import org.eclipse.jface.viewers.ISelectionChangedListener;
 import org.eclipse.jface.viewers.IStructuredContentProvider;
+import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.viewers.TableViewer;
 import org.eclipse.jface.viewers.TableViewerColumn;
@@ -32,15 +33,12 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Table;
-import org.eclipse.ui.part.FileEditorInput;
-import org.eclipse.ui.statushandlers.StatusManager;
 
-import com.coralcea.jasper.tools.Activator;
+import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntDocumentManager;
 import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -49,35 +47,67 @@ import com.hp.hpl.jena.vocabulary.RDF;
 
 public class DTAImportPolicyDialog extends Dialog {
 
-	private DTAEditor editor;
-	private IFile policy;
-	private Model model;
-	
-	public static void run(Shell shell, DTAEditor editor) {
-		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, editor);
-		try {
-			if (dialog.open() == Dialog.OK) {
-				DTACore.saveModel(dialog.model, dialog.policy, true, null);
-				MessageDialog reload = new MessageDialog(shell, "Model Reload", null, "Do you want to reload the model?", MessageDialog.QUESTION_WITH_CANCEL, new String[]{"Yes", "No"}, 0);
-				if (reload.open() == MessageDialog.OK) {
-					IFile file = editor.getFileEditorInput().getFile();
-					DTACore.unloadModel(file);
-					DTACore.notifyListeners(file);
-					editor.setInput(new FileEditorInput(file));
-				}
-			}
-		} catch (Exception e) {
-			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Failed to save the DTA policy file");
-			StatusManager.getManager().handle(status, StatusManager.SHOW);
-		} finally {
-			dialog.model.close();
+	public static void openToEdit(Shell shell, DTAEditor editor) {
+		String title = "Import Policy";
+		String prompt = "Configure a map between imported model URIs and their file URLs:";
+		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor);
+		if (dialog.open() == Dialog.OK)
+			reloadEditor(editor);
+	}
+
+	public static List<String> openToSelect(Shell shell, DTAEditor editor) {
+		String title = "Add Import";
+		String prompt = "Select a model to import:";
+		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor);
+		if (dialog.open() == Dialog.OK) {
+			    return dialog.selectedImports;
 		}
+		return Collections.emptyList();
 	}
 	
-	private DTAImportPolicyDialog(Shell shell, DTAEditor editor) {
+	private static void reloadEditor(final DTAEditor editor) {
+		MessageDialog reload = new MessageDialog(editor.getSite().getShell(), "Model Imports Reload", null, "Do you want to reload the model imports?", MessageDialog.QUESTION_WITH_CANCEL, new String[]{"Yes", "No"}, 0);
+		if (reload.open() == MessageDialog.OK) {
+			editor.reload();
+		}
+	}
+
+	protected DTAEditor editor;
+	protected IFile policy;
+	protected Model model;
+	protected String title;
+	protected String prompt;
+	protected TableViewer viewer;
+	protected List<String> selectedImports;
+	
+	protected DTAImportPolicyDialog(Shell shell, String title, String prompt, DTAEditor editor) {
 		super(shell);
-		setShellStyle(getShellStyle() | SWT.RESIZE); 
+		setShellStyle(getShellStyle() | SWT.RESIZE);
+		
 		this.editor = editor;
+		this.title = title;
+		this.prompt = prompt;
+		this.selectedImports = new ArrayList<String>();
+		
+		loadImportPolicyModel();
+	}
+	
+	@Override
+	protected void okPressed() {
+		super.okPressed();
+		DTACore.saveImportPolicyModel(model, policy);
+	}
+	
+	@Override
+	protected void configureShell(Shell newShell) {
+		super.configureShell(newShell);
+		newShell.setText(title);
+	}
+
+	protected void loadImportPolicyModel() {
+        IContainer folder = editor.getFile().getParent();
+		policy = folder.getFile(Path.fromOSString(DTA.IMPORT_POLICY));
+		model = DTACore.loadImportPolicyModel(policy);
 	}
 
 	@Override
@@ -87,12 +117,35 @@ public class DTAImportPolicyDialog extends Dialog {
 		layout.numColumns = 2;
 		
 		Label label = new Label(container, SWT.NONE);
-		label.setText("Configure a map between imported model URIs and their file URLs:");
+		label.setText(prompt);
 		GridData layoutData = new GridData();
 		layoutData.horizontalSpan = 2;
 		label.setLayoutData(layoutData);
 		
 		final TableViewer viewer = new TableViewer(container, SWT.MULTI | SWT.HORIZONTAL | SWT.VERTICAL | SWT.FULL_SELECTION | SWT.BORDER);
+ 		viewer.setContentProvider(new IStructuredContentProvider() {
+			public Object[] getElements(Object inputElement) {
+				List<Resource> statements = model.listResourcesWithProperty(RDF.type, OntDocumentManager.ONTOLOGY_SPEC).toList();
+				return statements.toArray();
+			}
+			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
+			}
+			public void dispose() {
+			}
+		});
+ 		viewer.addSelectionChangedListener(new ISelectionChangedListener() {
+			public void selectionChanged(SelectionChangedEvent event) {
+				selectedImports.clear();
+				StructuredSelection s = (StructuredSelection) event.getSelection();
+				if (s != null) {
+					for (Object obj : s.toList()) {
+						Resource r = (Resource)obj;
+						selectedImports.add(r.getPropertyResourceValue( OntDocumentManager.PUBLIC_URI ).getURI());
+					}
+				}
+			}
+		});
+
 		Table table = viewer.getTable();
 		table.setHeaderVisible(true);
 		table.setLinesVisible(true);		
@@ -120,30 +173,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		    return r.getPropertyResourceValue( OntDocumentManager.ALT_URL ).getURI();
 		  }
 		});
-		
-        model = ModelFactory.createDefaultModel() ;
-        model.setNsPrefix("", OntDocumentManager.NS);
-        IContainer folder = editor.getFileEditorInput().getFile().getParent();
-		policy = folder.getFile(Path.fromOSString(DTACore.IMPORT_POLICY));
-		if (policy.exists()) {
-	        try {
-				model.read(policy.getContents(), null, "RDF/XML-ABBREV" );
-			} catch (CoreException e) {
-				Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Failed to read the DTA policy file");
-				StatusManager.getManager().handle(status, StatusManager.SHOW);
-			}
-		}
-		
- 		viewer.setContentProvider(new IStructuredContentProvider() {
-			public Object[] getElements(Object inputElement) {
-				List<Resource> statements = model.listResourcesWithProperty(RDF.type, OntDocumentManager.ONTOLOGY_SPEC).toList();
-				return statements.toArray();
-			}
-			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
-			}
-			public void dispose() {
-			}
-		});
+
 		viewer.setInput(model);
 
 		Composite buttonColumn = new Composite(container, SWT.NONE);
@@ -157,10 +187,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		addButton.setText("Add");
 		addButton.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {
-				Resource entry = model.createResource();
-				model.add(entry, RDF.type, OntDocumentManager.ONTOLOGY_SPEC);
-				entry.addProperty(OntDocumentManager.PUBLIC_URI, model.getResource("http://www.xyz.org/model1"));
-				entry.addProperty(OntDocumentManager.ALT_URL, model.getResource("file:Model1.dta"));
+				Resource entry = DTACore.addImportPolicyEntry(model, "http://www.xyz.org/model1", "file:Model1.dta");
 				viewer.refresh();
 				viewer.setSelection(new StructuredSelection(entry), true);
 			}
@@ -182,13 +209,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		return container;
 	}
 
-	@Override
-	protected void configureShell(Shell newShell) {
-		super.configureShell(newShell);
-		newShell.setText("Import Policy");
-	}
-
-	public class CellEditingSupport extends EditingSupport {
+	protected class CellEditingSupport extends EditingSupport {
 
 		private final TableViewer viewer;
 		private final CellEditor editor;

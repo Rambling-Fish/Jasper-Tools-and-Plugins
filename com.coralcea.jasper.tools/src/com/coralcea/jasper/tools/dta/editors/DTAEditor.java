@@ -25,6 +25,7 @@ import org.eclipse.gef.ui.actions.UndoAction;
 import org.eclipse.gef.ui.actions.UpdateAction;
 import org.eclipse.jface.action.IAction;
 import org.eclipse.jface.dialogs.IMessageProvider;
+import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.StructuredSelection;
 import org.eclipse.jface.window.Window;
@@ -52,21 +53,26 @@ import com.hp.hpl.jena.rdf.model.Resource;
 public class DTAEditor extends MultiPageEditorPart implements IResourceChangeListener, IResourceDeltaVisitor , INavigationLocationProvider, CommandStackListener, CommandStackEventListener {
 
 	public static final String ID = "com.coralcea.jasper.editors.DTA";
+	public static final String PAGE_MODEL = "Model";
+	public static final String PAGE_CLASS = "UML Diagram";
+	public static final String PAGE_BROWSE = "Browse Diagram";
+	public static final String PAGE_NAMESPACES = "Namespaces";
+	public static final String PAGE_SOURCE = "Source";
 	
 	private OntModel model;
-	private DTASourceViewer source;
-	private DTAPropertiesViewer properties;
-	private DTANamespacesViewer namespaces;
+	private List<DTAViewer> viewers;
 	private CommandStack commandStack;
 	private ActionRegistry actionRegistry;
 	private List<String> stackActions = new ArrayList<String>();
 	private FormToolkit toolkit;
+	private boolean markingLocation = true;
 	
 	public DTAEditor() {
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(this, IResourceChangeEvent.POST_CHANGE);
 		commandStack = new CommandStack();
 		commandStack.addCommandStackListener(this);
 		commandStack.addCommandStackEventListener(this);
+		viewers = new ArrayList<DTAViewer>();
 	}
 
 	@Override
@@ -75,7 +81,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		getCommandStack().removeCommandStackEventListener(this);
 		getCommandStack().removeCommandStackListener(this);
 		if (isDirty()) {
-			IFile file = getFileEditorInput().getFile();
+			IFile file = getFile();
 			DTACore.unloadModel(file);
 			DTACore.notifyListeners(file);
 		}
@@ -101,7 +107,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		setPartName(input.getName());
 		IFile file = ((IFileEditorInput)input).getFile();
 		try {
-			OntModel newModel = DTACore.getModel(file);
+			OntModel newModel = DTACore.getPossiblyLoadedModel(file);
 			if (newModel != getModel()) {
 				setModel(newModel);
 				refresh();
@@ -151,15 +157,12 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 
 	protected void setModel(OntModel model) {
 		this.model = model;
-		if (properties != null)
-			properties.setInput(model);
-		if (namespaces != null)
-			namespaces.setInput(model);
-		if (source != null)
-			source.setInput(model);
+		
+		for(DTAViewer viewer : viewers)
+			viewer.setInput(model);
 	}
 	
-	private CommandStack getCommandStack() {
+	CommandStack getCommandStack() {
 		return commandStack;
 	}
 	
@@ -173,29 +176,48 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		}
 	}
 
-	protected void createPropertiesPage() {
-		properties = new DTAPropertiesViewer(getContainer(), this);
-        int index = addPage(properties.getControl());
-		setPageText(index, "Properties");
+	protected void createModelPage() {
+		DTAViewer viewer = new DTAPropertiesViewer(getContainer(), this);
+        int index = addPage(viewer.getControl());
+		setPageText(index, PAGE_MODEL);
+		viewers.add(viewer);
 	}
 
 	protected void createSourcePage() {
-		source = new DTASourceViewer(getContainer(), this);
-		int index = addPage(source.getControl());
-		setPageText(index, "Source");
+		DTAViewer viewer = new DTASourceViewer(getContainer(), this);
+		int index = addPage(viewer.getControl());
+		setPageText(index, PAGE_SOURCE);
+		viewers.add(viewer);
 	}
 	
 	protected void createNamespacesPage() {
-		namespaces = new DTANamespacesViewer(getContainer(), this);
-		int index = addPage(namespaces.getControl());
-		setPageText(index, "Namespaces");
+		DTAViewer viewer = new DTANamespacesViewer(getContainer(), this);
+		int index = addPage(viewer.getControl());
+		setPageText(index, PAGE_NAMESPACES);
+		viewers.add(viewer);
+	}
+
+	protected void createClassDiagramPage() {
+		DTAViewer viewer = new DTAClassDiagramViewer(getContainer(), this);
+		int index = addPage(viewer.getControl());
+		setPageText(index, PAGE_CLASS);
+		viewers.add(viewer);
+	}
+
+	protected void createBrowseDiagramPage() {
+		DTAViewer viewer = new DTABrowseDiagramViewer(getContainer(), this);
+		int index = addPage(viewer.getControl());
+		setPageText(index, PAGE_BROWSE);
+		viewers.add(viewer);
 	}
 
 	@Override
 	protected void createPages() {
 		toolkit = new FormToolkit(getContainer().getDisplay());
 		
-		createPropertiesPage();
+		createModelPage();
+		createClassDiagramPage();
+		createBrowseDiagramPage();
 		createNamespacesPage();
 		createSourcePage();
 		
@@ -211,7 +233,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		markLocation();
 	}
 	
-	protected void refresh() {
+	public void refresh() {
 		if (getActivePage() != -1) {
 			DTAViewer viewer = getViewer(getActivePage());
 			viewer.refresh();
@@ -223,19 +245,31 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		// needed so DTANavigationLocation can have visibility to call it
 		super.setActivePage(pageIndex);
 	}
-	
+
 	public OntModel getModel() {
 		return model;
 	}
 	
 	DTAViewer getViewer(int page) {
-		if (page == 0)
-			return properties;
-		else if (page == 1)
-			return namespaces;
-		else if (page == 2)
-			return source;
-		return null;
+		return (page >= 0) ? viewers.get(page) : null;
+	}
+	
+	public void setSelectedElement(Resource element, String pageName) {
+		int page = getPage(pageName);
+		if (page!=-1) {
+			markingLocation = false;
+			setActivePage(page);
+			markingLocation = true;
+			setSelectedElement(element);
+		}
+	}
+	
+	private int getPage(String name) {
+		for (int i=0; i<viewers.size(); i++) {
+			if (getPageText(i).equals(name))
+				return i;
+		}
+		return -1;
 	}
 	
 	public void setSelectedElement(Resource element) {
@@ -255,7 +289,8 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	}
 	
 	void markLocation() {
-		getSite().getPage().getNavigationHistory().markLocation(this);
+		if (markingLocation)
+			getSite().getPage().getNavigationHistory().markLocation(this);
 	}
 	
 	@Override
@@ -268,15 +303,19 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		return new DTANavigationLocation(this, true);
 	}
 	
-	protected IFileEditorInput getFileEditorInput() {
+	public IFileEditorInput getFileEditorInput() {
 		return (IFileEditorInput) getEditorInput();
+	}
+
+	public IFile getFile() {
+		return getFileEditorInput().getFile();
 	}
 
 	@Override
 	public void doSave(IProgressMonitor monitor) {
-		IFile file = getFileEditorInput().getFile();
+		IFile file = getFile();
 		try {
-			DTACore.saveModel(model, file, monitor);
+			DTACore.saveModel(model, file, false, monitor);
 			getCommandStack().markSaveLocation();
 		} catch(Throwable t) {
 			Activator.getDefault().log("Error saving DTA file", t);
@@ -323,7 +362,25 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	@Override
 	public boolean isSaveAsAllowed() {
 		return true;
-	}		
+	}
+
+	protected boolean saveIfNeededBefore(String action) {
+		if (isDirty()) {
+			MessageDialog dialog = new MessageDialog(getSite().getShell(), action, null, "The model needs to be saved before proceeding. Is that OK?", MessageDialog.CONFIRM, new String[]{"OK", "Cancel"}, 0);
+			if (dialog.open() == 0) {
+				doSave(null);
+				return true;
+			}
+			return false;
+		}
+		return true;
+	}
+	
+	public void reload() {
+		DTACore.unloadModel(getFile());
+		setInput(getFileEditorInput());
+		DTACore.notifyListeners(getFile());
+	}
 	
 	@Override
 	public boolean isDirty() {
@@ -355,7 +412,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 
 	@Override
 	public boolean visit(IResourceDelta delta) throws CoreException {
-		if (!delta.getResource().equals(getFileEditorInput().getFile()))
+		if (!delta.getResource().equals(getFile()))
 			return true;
 		if (delta.getKind() == IResourceDelta.REMOVED) {
 			Display display = getSite().getShell().getDisplay();

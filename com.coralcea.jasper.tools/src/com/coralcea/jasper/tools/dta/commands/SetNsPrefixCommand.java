@@ -17,7 +17,7 @@ public class SetNsPrefixCommand extends DTACommand {
 	}
 
 	@Override
-	public void store() {
+	public void prepare() {
 		oldURI = model.getNsPrefixURI(prefix);
 	}
 

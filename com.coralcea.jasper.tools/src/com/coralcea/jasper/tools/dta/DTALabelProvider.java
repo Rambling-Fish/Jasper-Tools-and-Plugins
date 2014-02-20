@@ -7,6 +7,8 @@ import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.JasperImages;
 import com.hp.hpl.jena.ontology.OntProperty;
 import com.hp.hpl.jena.ontology.OntResource;
+import com.hp.hpl.jena.ontology.Ontology;
+import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
 
 public class DTALabelProvider extends LabelProvider {
@@ -16,10 +18,12 @@ public class DTALabelProvider extends LabelProvider {
 		if (element == null)
 			return null;
 		Resource modelElement = (Resource) element;
-		if (modelElement == DTA.DTAs || modelElement == DTA.Classes | modelElement == DTA.Properties)
+		if (modelElement == DTA.DTAs || modelElement == DTA.Types | modelElement == DTA.Properties)
 			return Activator.getImage(JasperImages.PACKAGE);
 		if (DTAUtilities.isOntology(modelElement))
-			return Activator.getImage(JasperImages.MODEL);
+			return (DTAUtilities.isDefinedByBase((Ontology)modelElement))
+				? Activator.getImage(JasperImages.MODEL)
+				: Activator.getImage(JasperImages.IMPORT);
 		if (DTAUtilities.isClass(modelElement))
 			return Activator.getImage(JasperImages.CLASS);
 		if (DTAUtilities.isProperty(modelElement))
@@ -28,6 +32,8 @@ public class DTALabelProvider extends LabelProvider {
 			return Activator.getImage(JasperImages.DTA);
 		if (DTAUtilities.isOperation(modelElement))
 			return Activator.getImage(JasperImages.OPERATION);
+		if (DTAUtilities.isRequest(modelElement))
+			return Activator.getImage(JasperImages.REQUEST);
 		return null;
 	}
 
@@ -39,12 +45,19 @@ public class DTALabelProvider extends LabelProvider {
 		String text = DTAUtilities.getLabel(modelElement);
 		if (DTAUtilities.isProperty(modelElement)) {
 			OntResource range = modelElement.as(OntProperty.class).getRange();
-			text += (range != null) ? " : "+range.getLocalName() : "";
-		} else if (DTAUtilities.isOperation(modelElement)) {
-			Resource input = modelElement.getPropertyResourceValue(DTA.input);
-			text += (input != null) ? " ("+input.getLocalName()+")" : "";
+			text += (range != null) ? " : "+ DTAUtilities.getLabel(range) : "";
+		} else if (DTAUtilities.isOperation(modelElement) || DTAUtilities.isRequest(modelElement)) {
+			String inputs = "";
+			String outputs = "";
+			for (RDFNode input : DTAUtilities.listObjects(modelElement, DTA.input)) {
+				if (inputs.length()!=0)
+					inputs += ", ";
+				inputs += DTAUtilities.getLabel(input);
+			}
 			Resource output = modelElement.getPropertyResourceValue(DTA.output);
-			text += (output != null) ? " : "+output.getLocalName() : "";
+			if (output!=null)
+				outputs = " "+DTAUtilities.getLabel(output);
+			text += " ("+inputs+")"+outputs;
 		}
 		return text;
 	}
