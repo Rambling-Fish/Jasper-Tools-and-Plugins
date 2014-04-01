@@ -5,6 +5,7 @@ import java.util.EventObject;
 import java.util.List;
 
 import org.eclipse.core.resources.IFile;
+import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
@@ -13,6 +14,7 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
@@ -39,13 +41,16 @@ import org.eclipse.ui.INavigationLocationProvider;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.dialogs.SaveAsDialog;
 import org.eclipse.ui.forms.widgets.FormToolkit;
+import org.eclipse.ui.ide.IGotoMarker;
 import org.eclipse.ui.part.FileEditorInput;
 import org.eclipse.ui.part.MultiPageEditorPart;
+import org.eclipse.ui.progress.UIJob;
 import org.eclipse.ui.statushandlers.StatusManager;
 import org.eclipse.ui.texteditor.DocumentProviderRegistry;
 import org.eclipse.ui.texteditor.IDocumentProvider;
 
 import com.coralcea.jasper.tools.Activator;
+import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -65,7 +70,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	private ActionRegistry actionRegistry;
 	private List<String> stackActions = new ArrayList<String>();
 	private FormToolkit toolkit;
-	private boolean markingLocation = true;
+	private boolean ignorePageActivation = false;
 	
 	public DTAEditor() {
 		ResourcesPlugin.getWorkspace().addResourceChangeListener(this, IResourceChangeEvent.POST_CHANGE);
@@ -102,7 +107,8 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		return toolkit;
 	}
 
-    protected void setInput(IEditorInput input) {
+	@Override
+   protected void setInput(IEditorInput input) {
     	super.setInput(input);
 		setPartName(input.getName());
 		IFile file = ((IFileEditorInput)input).getFile();
@@ -119,12 +125,15 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		}
     }
  
-	public Object getAdapter(@SuppressWarnings("rawtypes") Class type) {
-		if (type == ActionRegistry.class)
+	@Override
+	public Object getAdapter(@SuppressWarnings("rawtypes") Class adapter) {
+		if (adapter == IGotoMarker.class)
+			return getGotoAdapter();
+		if (adapter == ActionRegistry.class)
 			return getActionRegistry();
-		else if (type == CommandStack.class)
+		else if (adapter == CommandStack.class)
 			return getCommandStack();
-		return super.getAdapter(type);
+		return super.getAdapter(adapter);
 	}
 
 	protected ActionRegistry getActionRegistry() {
@@ -189,7 +198,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		setPageText(index, PAGE_SOURCE);
 		viewers.add(viewer);
 	}
-	
+
 	protected void createNamespacesPage() {
 		DTAViewer viewer = new DTANamespacesViewer(getContainer(), this);
 		int index = addPage(viewer.getControl());
@@ -229,11 +238,12 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	@Override
 	protected void pageChange(int newPageIndex) {
 		super.pageChange(newPageIndex);
-		refresh();
-		markLocation();
+		getViewer(newPageIndex).activate();
+		if (!ignorePageActivation)
+			markLocation();
 	}
 	
-	public void refresh() {
+	private void refresh() {
 		if (getActivePage() != -1) {
 			DTAViewer viewer = getViewer(getActivePage());
 			viewer.refresh();
@@ -254,14 +264,18 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		return (page >= 0) ? viewers.get(page) : null;
 	}
 	
+	public DTAViewer getActiveViewer() {
+		return getViewer(getActivePage());
+	}
+	
 	public void setSelectedElement(Resource element, String pageName) {
 		int page = getPage(pageName);
-		if (page!=-1) {
-			markingLocation = false;
+		if (page!=getActivePage()) {
+			ignorePageActivation = true;
 			setActivePage(page);
-			markingLocation = true;
-			setSelectedElement(element);
+			ignorePageActivation = false;
 		}
+		setSelectedElement(element);
 	}
 	
 	private int getPage(String name) {
@@ -289,8 +303,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	}
 	
 	void markLocation() {
-		if (markingLocation)
-			getSite().getPage().getNavigationHistory().markLocation(this);
+		getSite().getPage().getNavigationHistory().markLocation(this);
 	}
 	
 	@Override
@@ -366,7 +379,7 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 
 	protected boolean saveIfNeededBefore(String action) {
 		if (isDirty()) {
-			MessageDialog dialog = new MessageDialog(getSite().getShell(), action, null, "The model needs to be saved before proceeding. Is that OK?", MessageDialog.CONFIRM, new String[]{"OK", "Cancel"}, 0);
+			MessageDialog dialog = new MessageDialog(getSite().getShell(), action, null, "The model needs to be saved before proceeding with this action. Is that OK?", MessageDialog.CONFIRM, new String[]{"OK", "Cancel"}, 0);
 			if (dialog.open() == 0) {
 				doSave(null);
 				return true;
@@ -377,15 +390,36 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	}
 	
 	public void reload() {
-		DTACore.unloadModel(getFile());
-		setInput(getFileEditorInput());
-		DTACore.notifyListeners(getFile());
+		if (saveIfNeededBefore("Reload Model")) {
+			DTACore.unloadModel(getFile());
+			setInput(getFileEditorInput());
+			DTACore.notifyListeners(getFile());
+		}
 	}
 	
 	@Override
 	public boolean isDirty() {
 		return getCommandStack().isDirty();
 	}
+	
+	public IGotoMarker getGotoAdapter() {
+		return new IGotoMarker() {
+			public void gotoMarker(IMarker marker) {
+				try {
+					if (DTA.MARKER.equals(marker.getType())) {
+						String uri = marker.getAttribute(IMarker.LOCATION, null);
+						if (uri != null) {
+							Resource r = model.getResource(uri);
+							if (model.containsResource(r))
+								setSelectedElement(r, PAGE_MODEL);
+						}
+					}
+				} catch (CoreException e) {
+					Activator.getDefault().log("Error reading DTA marker", e);
+				}
+			}
+		};
+	}	
 
 	@Override
 	public void commandStackChanged(EventObject event) {
@@ -396,7 +430,12 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	@Override
 	public void stackChanged(CommandStackEvent event) {
 		if (event.isPostChangeEvent()) {
-			refresh();
+			new UIJob("Refesh DATA Model") {
+				public IStatus runInUIThread(IProgressMonitor monitor) {
+					refresh();
+					return Status.OK_STATUS;						
+				}
+			}.schedule();
 		}
 	}
 
@@ -431,13 +470,22 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 				});
 			}
 		} else if (delta.getKind() == IResourceDelta.CHANGED) {
-			final IFile newFile = ResourcesPlugin.getWorkspace().getRoot().getFile(delta.getFullPath());
-			Display display = getSite().getShell().getDisplay();
-			display.asyncExec(new Runnable() {
-				public void run() {
-					setInput(new FileEditorInput(newFile));
-				}
-			});
+			if ((delta.getFlags() & IResourceDelta.MARKERS) == 0) {
+				final IFile newFile = ResourcesPlugin.getWorkspace().getRoot().getFile(delta.getFullPath());
+				Display display = getSite().getShell().getDisplay();
+				display.asyncExec(new Runnable() {
+					public void run() {
+						setInput(new FileEditorInput(newFile));
+					}
+				});
+			} else {
+				new UIJob("Refesh DATA Model") {
+					public IStatus runInUIThread(IProgressMonitor monitor) {
+						refresh();
+						return Status.OK_STATUS;						
+					}
+				}.schedule();
+			}
 		}
 		return false;
 	}

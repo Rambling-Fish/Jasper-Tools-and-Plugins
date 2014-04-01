@@ -1,6 +1,8 @@
 package com.coralcea.jasper.tools.dta.diagrams;
 
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 
 import org.eclipse.draw2d.Figure;
@@ -18,9 +20,12 @@ import org.eclipse.gef.GraphicalEditPart;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntClass;
+import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntProperty;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.vocabulary.RDFS;
 
 public class DTAClassEditPart extends DTAResourceNodeEditPart {
@@ -88,32 +93,49 @@ public class DTAClassEditPart extends DTAResourceNodeEditPart {
 	@Override
 	protected List<Resource> getModelChildren() {
 		List<Resource> children = new ArrayList<Resource>();
-		 for (OntProperty p : DTAUtilities.getDeclaredProperties(getOntClass())) {
-			 if (p.isDatatypeProperty())
-				 children.add(p);
-		 }
+		OntModel model = getOntClass().getOntModel();
+		DTAUMLDiagramEditPart parent = (DTAUMLDiagramEditPart) getParent();
+		
+		for (StmtIterator i = model.getBaseModel().listStatements(null, RDFS.domain, getOntClass()); i.hasNext();) {
+			Statement s = i.next();
+        	if (parent.getModelConnections().contains(s))
+        		children.add(model.getOntResource(s.getSubject()).as(OntProperty.class));
+		}
+		Collections.sort(children, new Comparator<Resource>() {
+			public int compare(Resource o1, Resource o2) {
+				String s1 = getLabelProvider().getText(o1);
+				String s2 = getLabelProvider().getText(o2);
+				return s1.compareTo(s2);
+			}
+		 });
 		 return children;
 	}
 	
 	@Override
 	protected List<Object> getModelSourceConnections() {
 		List<Object> connections = new ArrayList<Object>();
-		for (OntProperty p : DTAUtilities.getDeclaredProperties(getOntClass())) {
-			if (p.isObjectProperty())
-				connections.add(p);
-		}
-		connections.addAll(getOntClass().getOntModel().listStatements(getOntClass(), RDFS.subClassOf, (RDFNode)null).toList());
+		OntModel model = getOntClass().getOntModel();
+		DTAUMLDiagramEditPart parent = (DTAUMLDiagramEditPart) getParent();
+
+		for (StmtIterator i = model.getBaseModel().listStatements(getOntClass(), RDFS.subClassOf, (RDFNode)null); i.hasNext();) {
+			Statement s = i.next();
+        	if (parent.getModelConnections().contains(s))
+        		connections.add(s);
+		}		
 		return connections;
 	}
 
 	@Override
 	protected List<Object> getModelTargetConnections() {
 		List<Object> connections = new ArrayList<Object>();
-		for (OntProperty p : DTAUtilities.getPropertiesTypedBy(getOntClass())) {
-			if (p.isObjectProperty() && p.getDomain()!=null)
-				connections.add(p);
-		}
-		connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.subClassOf, getOntClass()).toList());
+		OntModel model = getOntClass().getOntModel();
+		DTAUMLDiagramEditPart parent = (DTAUMLDiagramEditPart) getParent();
+
+		for (StmtIterator i = model.getBaseModel().listStatements(null, RDFS.subClassOf, getOntClass()); i.hasNext();) {
+			Statement s = i.next();
+        	if (parent.getModelConnections().contains(s))
+        		connections.add(s);
+		}		
 		return connections;
 	}
 }

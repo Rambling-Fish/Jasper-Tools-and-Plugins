@@ -34,7 +34,9 @@ import org.eclipse.ui.forms.widgets.ImageHyperlink;
 import org.eclipse.ui.forms.widgets.Section;
 
 import com.coralcea.jasper.tools.Activator;
-import com.coralcea.jasper.tools.JasperImages;
+import com.coralcea.jasper.tools.Images;
+import com.coralcea.jasper.tools.dta.DTACodeGenerator;
+import com.coralcea.jasper.tools.dta.DTAModelValidator;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -49,42 +51,57 @@ public abstract class DTAViewer extends Viewer {
 	public DTAViewer(Composite parent, DTAEditor editor) {
 		this.editor = editor;
 		this.toolkit = editor.getFormToolkit();
-		form = toolkit.createForm(parent);
-		toolkit.decorateFormHeading(form);
-		addActions();
+		this.form = createControl(parent);
+		setupActions();
 	}
 	
-	protected final void addActions() {
-		addActionsToToolBar(form.getToolBarManager());
+	protected Form createControl(Composite parent) {
+		Form f = toolkit.createForm(parent);
+		toolkit.decorateFormHeading(f);
+		return f;
+	}
+	
+	protected final void setupActions() {
+		setupActions(form.getToolBarManager());
 		form.updateToolBar();
 	}
 
-	protected void addActionsToToolBar(IToolBarManager manager) {
+	protected void setupActions(IToolBarManager manager) {
 		Action action;
 		
-		manager.add(new Separator("Common"));
+		manager.add(new Separator("Codegen"));
+		manager.add(new Separator("Import"));
 		manager.add(new Separator("Viewer"));
 		manager.add(new Separator("Basic"));
 		
 		if (!DTAUtilities.isLibrary(getEditor().getModel().listOntologies().next())) {
 			action = new Action("Code Gen") {
 				public void run() {
-					DTACodeGenerator.run(getEditor());
+					DTACodeGenerator.run(getEditor().getSite().getShell(), getEditor().getFile(), getEditor().getModel());
 				}
 			};
 			action.setToolTipText("Generate code");
-			action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.CODEGEN));
-			manager.appendToGroup("Common", action);
+			action.setImageDescriptor(Activator.getImageDescriptor(Images.CODEGEN));
+			manager.appendToGroup("Codegen", action);
 		}
 		
+		action = new Action("Validate") {
+			public void run() {
+				DTAModelValidator.run(getEditor().getSite().getShell(), getEditor().getFile(), getEditor().getModel());
+			}
+		};
+		action.setToolTipText("Validate model");
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.VALIDATE));
+		manager.appendToGroup("Codegen", action);
+
 		action = new Action("Download Model") {
 			public void run() {
 				DTADownloadJasperModel.run(getEditor());
 			}
 		};
 		action.setToolTipText("Download Jasper model");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.SERVER));
-		manager.appendToGroup("Common", action);
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.SERVER));
+		manager.appendToGroup("Import", action);
 
 		action = new Action("Import Policy") {
 			public void run() {
@@ -92,8 +109,8 @@ public abstract class DTAViewer extends Viewer {
 			}
 		};
 		action.setToolTipText("Edit import policy");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.POLICY));
-		manager.appendToGroup("Common", action);
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.POLICY));
+		manager.appendToGroup("Import", action);
 
 		action = new Action("Reload model") {
 			public void run() {
@@ -101,12 +118,12 @@ public abstract class DTAViewer extends Viewer {
 			}
 		};
 		action.setToolTipText("Reload model");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.REFRESH));
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.REFRESH));
 		manager.appendToGroup("Basic", action);
 				
 		action = new SaveAction(getEditor());
 		action.setToolTipText("Save model");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.SAVE));
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.SAVE));
 		manager.appendToGroup("Basic", action);
 
 		action = new Action("Help") {
@@ -115,11 +132,11 @@ public abstract class DTAViewer extends Viewer {
 			}
 		};
 		action.setToolTipText("Show help");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.HELP));
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.HELP));
 		manager.appendToGroup("Basic", action);
 	}
 
-	protected DTAEditor getEditor() {
+	public DTAEditor getEditor() {
 		return editor;
 	}
 	
@@ -141,6 +158,10 @@ public abstract class DTAViewer extends Viewer {
 
 	@Override
 	public abstract void refresh();
+
+	public void activate() {
+		refresh();
+	}
 
 	@Override
 	public ISelection getSelection() {
@@ -177,9 +198,16 @@ public abstract class DTAViewer extends Viewer {
 	}
 	
 	protected Composite createComposite(Composite parent, int columns) {
+		return createComposite(parent, columns, 5);
+	}
+	
+	protected Composite createComposite(Composite parent, int columns, int margin) {
 		Composite composite = toolkit.createComposite(parent, SWT.NONE);
         composite.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, false));
-        composite.setLayout(new GridLayout(columns, false));
+        GridLayout layout = new GridLayout(columns, false);
+        layout.marginHeight = margin;
+        layout.marginWidth = margin;
+        composite.setLayout(layout);
 		return composite;
 	}
 
@@ -197,10 +225,7 @@ public abstract class DTAViewer extends Viewer {
         Section section = toolkit.createSection(parent, Section.TITLE_BAR|Section.TWISTIE|Section.EXPANDED|SWT.BORDER);
         section.setText(title);
         section.setToolTipText(description);
-        GridData data = new GridData();
-        data.horizontalAlignment = GridData.FILL;
-        data.grabExcessHorizontalSpace=true;
-        section.setLayoutData(data);
+        section.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, false));
         GridLayout layout = new GridLayout();
         layout.marginHeight = 0;
         layout.marginWidth = 0;
@@ -211,20 +236,18 @@ public abstract class DTAViewer extends Viewer {
 	protected Label createLabel(Composite parent, String text, String tooltip) {
         Label l = toolkit.createLabel(parent, text, SWT.NONE);
         l.setToolTipText(tooltip);
+        l.setBackground(null);
         return l;
 	}
 	
 	protected Text createText(Composite parent, int style, String s) {
-        Text text = toolkit.createText(parent, s, SWT.BORDER|style);
-        GridData data = new GridData();
-        data.horizontalAlignment = GridData.FILL;
-        data.grabExcessHorizontalSpace=true;
-        text.setLayoutData(data);
+        Text text = toolkit.createText(parent, s, style);
+        text.setLayoutData(new GridData(GridData.FILL, GridData.BEGINNING, true, false));
         return text;
 	}
 	
 	protected Text createTextArea(Composite parent, int style, String s) {
-        Text text = toolkit.createText(parent, s, SWT.BORDER|SWT.MULTI|SWT.FOCUSED|style);
+        Text text = toolkit.createText(parent, s, SWT.MULTI|SWT.WRAP|SWT.V_SCROLL|style);
         text.addTraverseListener(new TraverseListener() {
             public void keyTraversed(TraverseEvent e) {
                 if (e.detail == SWT.TRAVERSE_TAB_NEXT || e.detail == SWT.TRAVERSE_TAB_PREVIOUS) {
@@ -232,9 +255,7 @@ public abstract class DTAViewer extends Viewer {
                 }
             }
         });
-        GridData data = new GridData();
-        data.horizontalAlignment = GridData.FILL;
-        data.grabExcessHorizontalSpace=true;
+        GridData data = new GridData(GridData.FILL_BOTH);
         data.heightHint = 3 * text.getLineHeight();
         text.setLayoutData(data);
         return text;
@@ -255,7 +276,6 @@ public abstract class DTAViewer extends Viewer {
         Button button = toolkit.createButton(parent, s, style);
         GridData data = new GridData();
         data.verticalAlignment = GridData.CENTER;
-        data.grabExcessHorizontalSpace=false;
         button.setLayoutData(data);
         return button;
 	}
@@ -267,7 +287,7 @@ public abstract class DTAViewer extends Viewer {
 	
 	protected ToolItem createToolItem(ToolBar parent, String text, Image icon) {
 		ToolItem item = new ToolItem(parent, SWT.PUSH);
-		item.setImage(Activator.getImage(JasperImages.PLUS));
+		item.setImage(Activator.getImage(Images.PLUS));
 		item.setToolTipText(text);
 		return item;
 	}

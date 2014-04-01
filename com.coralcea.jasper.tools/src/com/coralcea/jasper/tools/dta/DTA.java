@@ -9,9 +9,9 @@ public class DTA {
 	public static final String URI = "http://coralcea.ca/2014/01/dta#";
 	public static final String PREFIX = "dta";
 	public static final String EXTENSION = "dta";
-	public static final String GLOBAL_QUEUE = "jms.jasper.delegate.global.queue";
 	public static final String FORMAT = "TURTLE";
 	public static final String IMPORT_POLICY = "import-policy.rdf";
+	public static final String MARKER = "com.coralcea.jasper.markers.DTA";
 
 	public static final Resource DTAs = resource("DTAs");
 	public static final Resource Types = resource("Types");
@@ -24,11 +24,14 @@ public class DTA {
 	public static final Resource Request = resource("Request");
 	public static final Resource Get = resource("Get");
 	public static final Resource Post = resource("Post");
+	public static final Resource Publish = resource("Publish");
 	
 	public static final Property isLibrary = property("isLibrary");
 	public static final Property operation = property("operation");
 	public static final Property request = property("request");
 	public static final Property kind = property("kind");
+	public static final Property rule = property("rule");
+	public static final Property expires = property("expires");
 	public static final Property input = property("input");
 	public static final Property output = property("output");
 	public static final Property destination = property("destination");

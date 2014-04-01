@@ -1,6 +1,6 @@
 package com.coralcea.jasper.tools;
 
-public interface JasperImages {
+public interface Images {
 
 	public static final String MODEL = "Model";
 
@@ -45,4 +45,10 @@ public interface JasperImages {
 	public static final String SAVE = "Save";
 
 	public static final String REQUEST = "Request";
+
+	public static final String VALIDATE = "Validate";
+
+	public static final String FILTER = "Filter";
+
+	public static final String FIND = "Find";
 }

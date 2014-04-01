@@ -21,6 +21,7 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Text;
+import org.eclipse.ui.forms.widgets.Form;
 
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
@@ -33,9 +34,14 @@ public class DTANamespacesViewer extends DTAViewer {
 	
 	public DTANamespacesViewer(Composite parent, DTAEditor editor) {
 		super(parent, editor);
-		getControl().setText("Namespaces");
 	}
 	
+	protected Form createControl(Composite parent) {
+		Form f = super.createControl(parent);
+		f.setText("Namespaces");
+		return f;
+	}
+
 	@Override
 	public void refresh() {
 		if (content != null)
@@ -50,10 +56,11 @@ public class DTANamespacesViewer extends DTAViewer {
 		parent.setLayout(new GridLayout());
 		ScrolledComposite scrollpane = createScrolledComposite(parent, 1);
 		Composite group = createComposite(scrollpane, 4);
+		((GridLayout)group.getLayout()).horizontalSpacing = 10;
 		scrollpane.setContent(group);
 
 		createLabel(group, "Prefix", "The prefix of the namespace");
-		Label label = createLabel(group, "URI", "The URI of the namespace");
+		Label label = createLabel(group, "Namespace", "The namespace");
 		GridData data = new GridData();
 		data.horizontalSpan = 3;
 		label.setLayoutData(data);
@@ -195,14 +202,14 @@ public class DTANamespacesViewer extends DTAViewer {
 			if (decor == null)
 		        decor = new ControlDecoration((Text)e.widget, SWT.TOP);
 			
-			boolean validPrefix = DTAUtilities.isValidPrefix(prefix.getText());
-			boolean validURI = DTAUtilities.isValidNsURI(uri.getText());
+			boolean validPrefix = prefix.getText().length()==0 || DTAUtilities.isValidPrefix(prefix.getText());
+			boolean validURI = uri.getText().length()==0 || DTAUtilities.isValidNsURI(uri.getText());
 			
 			String msg = null;
 			if (e.widget == prefix && !validPrefix)
-				msg = "Not a valid prefix";
+				msg = "Invalid prefix";
 			else if (e.widget == uri && !validURI)
-				msg = "Not a valid namespace URI";
+				msg = "Invalid namespace";
 			
             if (msg != null) {
             	decor.setDescriptionText(msg);

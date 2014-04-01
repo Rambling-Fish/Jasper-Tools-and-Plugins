@@ -1,16 +1,20 @@
 package com.coralcea.jasper.tools.dta.commands;
 
+import org.eclipse.core.resources.IFile;
+
 import com.coralcea.jasper.tools.dta.DTACore;
 import com.hp.hpl.jena.ontology.OntModel;
 
-public class ChangeImportCommand extends DTACommand {
+public class ChangeImportLoadCommand extends DTACommand {
 
+	private IFile file;
 	private OntModel model;
 	private String importedURI;
 	private boolean load;
 	
-	public ChangeImportCommand(OntModel model, String importedURI, boolean load) {
+	public ChangeImportLoadCommand(IFile file, OntModel model, String importedURI, boolean load) {
 		super(load ? "Loading" : "Unloading" + " Import");
+		this.file = file;
 		this.model = model;
 		this.importedURI = importedURI;
 		this.load = load;
@@ -22,19 +26,20 @@ public class ChangeImportCommand extends DTACommand {
 
 	@Override
 	public void undo() {
-		if (load) {
-			DTACore.unloadImport(model, importedURI);
-		} else
-			DTACore.loadImport(model, importedURI);
+		if (load)
+			model.getDocumentManager().unloadImport(model, importedURI);
+		else
+			model.getDocumentManager().loadImport(model, importedURI);
+		DTACore.notifyListeners(file);
 	}
 
 	@Override
 	public void redo() {
 		if (load)
-			DTACore.loadImport(model, importedURI);
-		else {
-			DTACore.unloadImport(model, importedURI);
-		}
+			model.getDocumentManager().loadImport(model, importedURI);
+		else
+			model.getDocumentManager().unloadImport(model, importedURI);
+		DTACore.notifyListeners(file);
 	}
 
 }

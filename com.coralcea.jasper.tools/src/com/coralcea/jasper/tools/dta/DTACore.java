@@ -2,7 +2,6 @@ package com.coralcea.jasper.tools.dta;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
-import java.io.FileNotFoundException;
 import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -73,8 +72,6 @@ public class DTACore  {
 		IContainer container = file.getParent();
 		OntModelSpec spec = containerToSpecMap.get(container);
 		if (spec == null) {
-			IFile policy = container.getFile(Path.fromOSString(DTA.IMPORT_POLICY));
-
 			FileManager fileManager = new FileManager(LocationMapper.get()) {
 				public Model readModel(Model model, String filenameOrURI) {
 			        String mappedURI = mapURI(filenameOrURI) ;
@@ -83,12 +80,14 @@ public class DTACore  {
 			        return super.readModel(model, filenameOrURI);
 				}
 			};
+
+			IFile policy = container.getFile(Path.fromOSString(DTA.IMPORT_POLICY));
 			fileManager.addLocatorFile(policy.getParent().getLocation().toOSString());
 			
 			OntDocumentManager dm = new OntDocumentManager(fileManager, policy.getLocation().toOSString());
 			dm.setReadFailureHandler(new OntDocumentManager.ReadFailureHandler() {
 				public void handleFailedRead(String uri, Model model, Exception e) {
-					Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Could not find the model for imported URI <"+uri+">", e);
+					Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Could not load the imported model <"+uri+">", e);
 					StatusManager.getManager().handle(status, StatusManager.SHOW);
 				}
 			});
@@ -113,19 +112,27 @@ public class DTACore  {
 		return model;
 	}
 
-	public static OntModel createNewModel(IFile file) throws CoreException {
+	public static OntModel createNewModel(IFile file) {
 		OntModel model = ModelFactory.createOntologyModel(getModelSpec(file));
 		model.setNsPrefix(DTA.PREFIX, DTA.URI);
-		model.register(new ChangeListener(file));
-		fileToModelMap.put(file, model);
+		return model;
+	}
+
+	public static OntModel createNewModel() {
+		OntModel model = ModelFactory.createOntologyModel(OntModelSpec.OWL_DL_MEM);
+		model.setNsPrefix(DTA.PREFIX, DTA.URI);
 		return model;
 	}
 
 	public static OntModel loadModel(IFile file) throws CoreException {
-		OntModel model = createNewModel(file);
-		if (file.exists())
+		if (file.exists()) {
+			OntModel model = createNewModel(file);
+			model.register(new ChangeListener(file));
+			fileToModelMap.put(file, model);
 			model.read(file.getContents(), null, DTA.FORMAT);
-		return model;
+			return model;
+		}
+		return null;
 	}
 	
 	public static void unloadModel(IFile file) {
@@ -166,7 +173,7 @@ public class DTACore  {
 		writer.write(model, out, "");
 	}
 	
-	public static void saveModel(OntModel model, IFile file, boolean notify, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
+	public static void saveModel(OntModel model, IFile file, boolean notify, IProgressMonitor monitor) throws CoreException {
 		if (!notify)
 			stopListening();
 		saveModel(model.getBaseModel(), file, DTA.FORMAT, monitor);
@@ -174,7 +181,7 @@ public class DTACore  {
 			startListening();
 	}
 	
-	public static void saveModel(Model model, IFile file, String format, IProgressMonitor monitor) throws FileNotFoundException, CoreException {
+	public static void saveModel(Model model, IFile file, String format, IProgressMonitor monitor) throws CoreException {
 		ByteArrayOutputStream out = new ByteArrayOutputStream();
 		DTACore.writeModel(model, out, format);
 		if (file.exists())
@@ -183,19 +190,6 @@ public class DTACore  {
 			file.create(new ByteArrayInputStream(out.toByteArray()), true, monitor);
 	}
 
-	public static void unloadImport(OntModel model, String importedURI) {
-		model.getDocumentManager().unloadImport(model, importedURI);
-		//The following is needed to make sure the model forgets the cached import
-//		if (model.getDocumentManager().getFileManager().hasCachedModel(importedURI))
-//			model.getDocumentManager().getFileManager().removeCacheModel(importedURI);
-//		if (model.getSpecification().getImportModelMaker().hasModel(importedURI))
-//			model.getSpecification().getImportModelMaker().removeModel(importedURI);
-	}
-	
-	public static void loadImport(OntModel model, String importedURI) {
-		model.getDocumentManager().loadImport(model, importedURI);
-	}
-	
 	public static Model loadImportPolicyModel(IFile policy) {
         Model model = ModelFactory.createDefaultModel() ;
         model.setNsPrefix("", OntDocumentManager.NS);
@@ -266,8 +260,9 @@ public class DTACore  {
 				return true;
 			IFile file = (IFile) delta.getResource();
 			if (fileToModelMap.containsKey(file)) {
-				if ((delta.getKind() & (IResourceDelta.REMOVED|IResourceDelta.CHANGED))!=0) 
-					unloadModel(file);
+				if ((delta.getKind() & (IResourceDelta.REMOVED|IResourceDelta.CHANGED))!=0)
+					if ((delta.getFlags() & IResourceDelta.MARKERS)==0)
+						unloadModel(file);
 			} else if (file.getName().equals(DTA.IMPORT_POLICY)) {
 				if ((delta.getKind() & (IResourceDelta.ADDED|IResourceDelta.REMOVED|IResourceDelta.CHANGED))!=0) 
 					updateModelSpec(file);

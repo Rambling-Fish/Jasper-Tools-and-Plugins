@@ -28,19 +28,19 @@ public abstract class DTANodeEditPart extends AbstractGraphicalEditPart implemen
 		return Collections.emptyList();
 	}
 
-	protected DTANodeFigure getNodeFigure() {
-		return (DTANodeFigure) getFigure();
+	protected DTANode getNode() {
+		return (DTANode) getFigure();
 	}
 
 	@Override
 	public ConnectionAnchor getSourceConnectionAnchor(ConnectionEditPart connEditPart) {
-		return getNodeFigure().getConnectionAnchor(getSourceConnectionAnchorKey(connEditPart));
+		return getNode().getConnectionAnchor(getSourceConnectionAnchorKey(connEditPart));
 	}
 
 	@Override
 	public ConnectionAnchor getSourceConnectionAnchor(Request request) {
 		Point pt = new Point(((DropRequest) request).getLocation());
-		return getNodeFigure().getSourceConnectionAnchorAt(pt);
+		return getNode().getSourceConnectionAnchorAt(pt);
 	}
 
 	protected String getSourceConnectionAnchorKey(ConnectionEditPart connEditPart) {
@@ -49,13 +49,13 @@ public abstract class DTANodeEditPart extends AbstractGraphicalEditPart implemen
 
 	@Override
 	public ConnectionAnchor getTargetConnectionAnchor(ConnectionEditPart connEditPart) {
-		return getNodeFigure().getConnectionAnchor(getTargetConnectionAnchorKey(connEditPart));
+		return getNode().getConnectionAnchor(getTargetConnectionAnchorKey(connEditPart));
 	}
 
 	@Override
 	public ConnectionAnchor getTargetConnectionAnchor(Request request) {
 		Point pt = new Point(((DropRequest) request).getLocation());
-		return getNodeFigure().getTargetConnectionAnchorAt(pt);
+		return getNode().getTargetConnectionAnchorAt(pt);
 	}
 
 	protected String getTargetConnectionAnchorKey(ConnectionEditPart connEditPart) {
@@ -63,7 +63,7 @@ public abstract class DTANodeEditPart extends AbstractGraphicalEditPart implemen
 	}
 	
 	final protected String mapConnectionAnchorToTerminal(ConnectionAnchor c) {
-		return getNodeFigure().getConnectionAnchorName(c);
+		return getNode().getConnectionAnchorName(c);
 	}
 
 	@Override

@@ -10,6 +10,7 @@ import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
+import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.dialogs.Dialog;
 import org.eclipse.jface.dialogs.IInputValidator;
 import org.eclipse.jface.dialogs.InputDialog;
@@ -23,6 +24,7 @@ import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.AddPropertyCommand;
+import com.coralcea.jasper.tools.dta.commands.ChangeImportLoadCommand;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Model;
@@ -62,19 +64,13 @@ public class DTADownloadJasperModel {
 					monitor.beginTask("Downloading Japser model", 10);
 					IFile jasperFile = file.getParent().getFile(Path.fromOSString(JASPER_FILE));
 					String[] subgraphs = downLoadGraphs(credentials, new SubProgressMonitor(monitor, 4));
-					OntModel jasperModel = createModel(subgraphs, jasperFile, new SubProgressMonitor(monitor, 2));
-					DTACore.saveModel(jasperModel, jasperFile, true, new SubProgressMonitor(monitor, 1));
+					updateJasperModel(subgraphs, jasperFile, new SubProgressMonitor(monitor, 2));
 					
 					IFile policy = (IFile) jasperFile.getParent().findMember(DTA.IMPORT_POLICY);
 					Model imports = DTACore.loadImportPolicyModel(policy);
 					DTACore.addImportPolicyEntry(imports, JASPER_URI, "file:"+JASPER_FILE);
 					DTACore.saveImportPolicyModel(imports, policy);
 					monitor.worked(1);
-					
-					Ontology ontology = model.listOntologies().next();
-					Resource r = model.getResource(JASPER_URI);
-					if (!ontology.hasProperty(OWL.imports, r))
-						editor.executeCommand(new AddPropertyCommand(ontology, OWL.imports, r), false);
 				} catch (Exception e) { 
 					Activator.getDefault().log("Error ading Jasper model", e);
 					Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Error downloading Jasper model", e);
@@ -87,10 +83,19 @@ public class DTADownloadJasperModel {
 		
 		try {
 			new ProgressMonitorDialog(shell).run(true, false, runnable);
-			editor.reload();
 		} catch (Exception e) {
 			Activator.getDefault().log("Failed to download Jasper model", e);
 		}
+
+		Ontology ontology = model.listOntologies().next();
+		Resource r = model.getResource(JASPER_URI);
+		if (!ontology.hasProperty(OWL.imports, r)) {
+			CompoundCommand cc = new CompoundCommand();
+			cc.add(new AddPropertyCommand(ontology, OWL.imports, r));
+			cc.add(new ChangeImportLoadCommand(editor.getFile(), model, JASPER_URI, true));
+			editor.executeCommand(cc, true);
+		} else
+			editor.reload();
 	}
 
 	private static Credentials promptForJasperCredentials(Shell shell, IFile file) throws Exception {
@@ -98,7 +103,7 @@ public class DTADownloadJasperModel {
 				
 		InputDialog dialog = new InputDialog(shell, "Download Jasper Model", "Enter the URL of the Jasper server", credentials.url, new IInputValidator() {
 			public String isValid(String url) {
-				return DTAUtilities.isValidURL(url) ? null : "Invalid URL";
+				return DTAUtilities.isValidURI(url) ? null : "Invalid URI";
 			}
 		});
 		
@@ -134,7 +139,7 @@ public class DTADownloadJasperModel {
 		
 		Model model = ModelFactory.createDefaultModel();
 		model.add(
-			model.createResource("http://mycompany.com/dta1#Type1"), 
+			model.createResource("http://mycompany.com/dta1#Type3"), 
 			model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#type"), 
 			model.createResource("http://www.w3.org/2002/07/owl#Class")
 		);
@@ -146,7 +151,7 @@ public class DTADownloadJasperModel {
 		model.add(
 				model.createResource("http://mycompany.com/dta1#property1"), 
 				model.createProperty("http://www.w3.org/2000/01/rdf-schema#domain"), 
-				model.createResource("http://mycompany.com/dta1#Type1")
+				model.createResource("http://mycompany.com/dta1#Type3")
 		);
 		model.add(
 				model.createResource("http://mycompany.com/dta1#property1"), 
@@ -161,8 +166,8 @@ public class DTADownloadJasperModel {
 		return graphs;
 	}
 	
-	private static OntModel createModel(String[] subgraphs, IFile file, IProgressMonitor monitor) throws Exception {
-		OntModel model = DTACore.createNewModel(file);
+	private static void updateJasperModel(String[] subgraphs, IFile file, IProgressMonitor monitor) throws Exception {
+		OntModel model = DTACore.createNewModel();
 		Ontology ont = model.createOntology(JASPER_URI);
 		ont.setPropertyValue(DTA.isLibrary, model.createTypedLiteral(true));
 		for (String subgraph : subgraphs) {
@@ -170,7 +175,7 @@ public class DTADownloadJasperModel {
 			submodel.read(new ByteArrayInputStream(subgraph.getBytes()), null, DTA.FORMAT);
 			model.add(submodel);
 		}
-		return model;
+		DTACore.saveModel(model, file, true, monitor);
 	}
 
 }

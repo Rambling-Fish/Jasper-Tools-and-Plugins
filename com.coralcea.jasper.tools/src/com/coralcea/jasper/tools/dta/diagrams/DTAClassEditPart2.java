@@ -5,18 +5,15 @@ import java.util.List;
 
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
-import org.eclipse.draw2d.LineBorder;
-import org.eclipse.draw2d.MarginBorder;
-import org.eclipse.draw2d.PositionConstants;
-import org.eclipse.draw2d.StackLayout;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.GraphicalEditPart;
 
+import com.coralcea.jasper.tools.dta.DTA;
 import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.vocabulary.RDFS;
 
-public class DTAClassEditPart2 extends DTAResourceNodeEditPart {
+public class DTAClassEditPart2 extends DTABrowseNodeEditPart {
 	
 	public DTAClassEditPart2(OntClass aClass) {
 		super(aClass);
@@ -28,16 +25,7 @@ public class DTAClassEditPart2 extends DTAResourceNodeEditPart {
 
 	@Override
 	protected IFigure createFigure() {
-		DTANodeFigure figure = new DTANodeFigure();
-		figure.setBorder(new LineBorder(1));
-		figure.setLayoutManager(new StackLayout());
-
-		Label label = new Label();
-		label.setLabelAlignment(PositionConstants.CENTER);
-		label.setBorder(new MarginBorder(5));
-		figure.add(label);
-		
-		return figure;
+		return new DTANodeLabel();
 	}
 
 	@Override
@@ -45,14 +33,14 @@ public class DTAClassEditPart2 extends DTAResourceNodeEditPart {
 		Rectangle r = new Rectangle(0, 0, -1, -1);
 		((GraphicalEditPart) getParent()).setLayoutConstraint(this, getFigure(), r);
 
-		Label label = (Label)getFigure().getChildren().get(0);
+		Label label = (Label)getFigure();
 		label.setText(getLabelProvider().getText(getOntClass()));
 		label.setToolTip(new Label(getOntClass().getURI()));
 		label.setIcon(getLabelProvider().getImage(getOntClass()));
 	}
 	
 	@Override
-	protected List<Object> getModelSourceConnections() {
+	protected List<Object> findModelSourceConnections() {
 		List<Object> connections = new ArrayList<Object>();
 		connections.addAll(getOntClass().getOntModel().listStatements(getOntClass(), RDFS.subClassOf, (RDFNode)null).toList());
 		connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.domain, getOntClass()).toList());
@@ -60,11 +48,13 @@ public class DTAClassEditPart2 extends DTAResourceNodeEditPart {
 	}
 
 	@Override
-	protected List<Object> getModelTargetConnections() {
+	protected List<Object> findModelTargetConnections() {
 		List<Object> connections = new ArrayList<Object>();
 		connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.subClassOf, getOntClass()).toList());
-		connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.range, getOntClass()).toList());
+		if (!RDFS.Literal.equals(getOntClass()))
+			connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.range, getOntClass()).toList());
+		connections.addAll(getOntClass().getOntModel().listStatements(null, DTA.input, getOntClass()).toList());
 		return connections;
 	}
-
+	
 }

@@ -31,7 +31,7 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 
 	private OntModel model;
 	private Collection<T> resources;
-	private boolean hasNone;
+	private boolean hasNone, hasNew;
 	
 	private static final DTALabelProvider labelProvider = new DTALabelProvider2();
 	private static class DTALabelProvider2 extends DTALabelProvider implements IStyledLabelProvider {
@@ -48,7 +48,7 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 		@Override
 		public StyledString getStyledText(Object element) {
 			StyledString s = new StyledString(getText(element));
-			int offset = s.getString().indexOf("-");
+			int offset = s.getString().indexOf(" ");
 			if (offset > -1) {
 				s.setStyle(offset, s.length() - offset, StyledString.QUALIFIER_STYLER);
 			}
@@ -58,9 +58,9 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 	}
 	
 	@SuppressWarnings("unchecked")
-	public static <T extends Resource> T run(String title, OntModel model, Collection<T> resources, boolean hasNone) {
+	public static <T extends Resource> T run(String title, OntModel model, Collection<T> resources, boolean hasNone, boolean hasNew) {
 		Shell shell = new Shell();
-		FilteredItemsSelectionDialog dialog = new DTASelectionDialog<T>(shell, title, model, resources, hasNone);
+		FilteredItemsSelectionDialog dialog = new DTASelectionDialog<T>(shell, title, model, resources, hasNone, hasNew);
 		int code = dialog.open();
 		if (code == Dialog.OK) 
 			return (T) dialog.getFirstResult();
@@ -71,11 +71,12 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 		return null;
 	}
 	
-	public DTASelectionDialog(Shell shell, String title, OntModel model, Collection<T> resources, boolean hasNone) {
+	public DTASelectionDialog(Shell shell, String title, OntModel model, Collection<T> resources, boolean hasNone, boolean hasNew) {
 		super(shell);
 		this.model = model;
 		this.resources = resources;
 		this.hasNone = hasNone;
+		this.hasNew = hasNew;
 		setTitle(title);
 		setSelectionHistory(new ResourceSelectionHistory());
 		setListLabelProvider(labelProvider);
@@ -86,7 +87,8 @@ public class DTASelectionDialog <T extends Resource> extends FilteredItemsSelect
 		super.createButtonsForButtonBar(parent);
 		if (hasNone)
 			createButton(parent, ID_NONE, "None", false);
-		createButton(parent, ID_NEW, "New...", false);
+		if (hasNew)
+			createButton(parent, ID_NEW, "New...", false);
 	}
 
 	@Override

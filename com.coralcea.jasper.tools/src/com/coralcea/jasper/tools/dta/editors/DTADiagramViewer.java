@@ -1,7 +1,14 @@
 package com.coralcea.jasper.tools.dta.editors;
 
+import org.eclipse.core.runtime.IProgressMonitor;
+import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.Status;
 import org.eclipse.draw2d.ColorConstants;
+import org.eclipse.draw2d.ConnectionLayer;
+import org.eclipse.draw2d.FreeformLayer;
+import org.eclipse.draw2d.FreeformLayeredPane;
 import org.eclipse.draw2d.IFigure;
+import org.eclipse.draw2d.LayeredPane;
 import org.eclipse.draw2d.SWTGraphics;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.DefaultEditDomain;
@@ -33,9 +40,10 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.progress.UIJob;
 
 import com.coralcea.jasper.tools.Activator;
-import com.coralcea.jasper.tools.JasperImages;
+import com.coralcea.jasper.tools.Images;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTALabelProvider;
 import com.hp.hpl.jena.ontology.OntResource;
@@ -61,10 +69,17 @@ public class DTADiagramViewer extends DTAViewer {
 		super(parent, editor);
 	}
 
-	protected void addActionsToToolBar(IToolBarManager manager) {
-		super.addActionsToToolBar(manager);
+	protected void setupActions(IToolBarManager manager) {
+		super.setupActions(manager);
 
-		root = new ScalableFreeformRootEditPart();
+		root = new ScalableFreeformRootEditPart() {
+			protected LayeredPane createPrintableLayers() {
+				FreeformLayeredPane layeredPane = new FreeformLayeredPane();
+				layeredPane.add(new ConnectionLayer(), CONNECTION_LAYER);
+				layeredPane.add(new FreeformLayer(), PRIMARY_LAYER);
+				return layeredPane;
+			}
+		};
 		root.getZoomManager().setZoom(1);
 
 		IAction action;
@@ -87,10 +102,11 @@ public class DTADiagramViewer extends DTAViewer {
 				clipboard.setContents(new Object[]{img.getImageData()}, new Transfer[]{imageTransfer});
 				
 				imageGC.dispose(); 
-				img.dispose();			}
+				img.dispose();			
+			}
 		};
 		action.setToolTipText("Copy to clipboard");
-		action.setImageDescriptor(Activator.getImageDescriptor(JasperImages.CAMERA));
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.CAMERA));
 		manager.appendToGroup("Viewer", action);
 
 		action = new ZoomInAction(root.getZoomManager());
@@ -150,10 +166,15 @@ public class DTADiagramViewer extends DTAViewer {
 
 	@Override
 	protected void revealSelectedElement() {
-		EditPart editpart = (EditPart) viewer.getEditPartRegistry().get(element);
+		final EditPart editpart = (EditPart) viewer.getEditPartRegistry().get(element);
 		if (editpart != null) {
 			viewer.setSelection(new StructuredSelection(editpart));
-			viewer.reveal(editpart);
+			new UIJob("Revealing editpart") {
+				public IStatus runInUIThread(IProgressMonitor monitor) {
+					viewer.reveal(editpart);
+					return Status.OK_STATUS;						
+				}
+			}.schedule();
 		}
 	}
 
@@ -170,6 +191,7 @@ public class DTADiagramViewer extends DTAViewer {
 		viewer.setEditDomain(editDomain);
 		viewer.addSelectionChangedListener(listener);
 		viewer.setProperty("LabelProvider", new DTALabelProvider());
+		viewer.setProperty("DiagramViewer", this);
 		viewer.setProperty(RulerProvider.PROPERTY_VERTICAL_RULER, null);
 		viewer.setProperty(RulerProvider.PROPERTY_HORIZONTAL_RULER, null);
 		viewer.setProperty(RulerProvider.PROPERTY_RULER_VISIBILITY, false);

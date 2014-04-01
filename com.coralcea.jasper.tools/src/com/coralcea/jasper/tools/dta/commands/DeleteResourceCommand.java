@@ -5,11 +5,9 @@ import java.util.List;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.rdf.model.Model;
-import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.Statement;
-import com.hp.hpl.jena.vocabulary.OWL;
 
 public class DeleteResourceCommand extends DTACommand {
 
@@ -27,16 +25,16 @@ public class DeleteResourceCommand extends DTACommand {
 
 	@Override
 	public void prepare() {
-    	statements = DTAUtilities.getStatementsOn(model, element);
+    	statements = DTAUtilities.listStatementsOn(model, element);
     	
 		for (RDFNode object : DTAUtilities.listObjects(element, null))
 			if (object.isAnon())
-				statements.addAll(DTAUtilities.getStatementsOn(model, (Resource)object));
+				statements.addAll(DTAUtilities.listStatementsOn(model, (Resource)object));
 		
-    	if (element instanceof Property)
-    		for (Resource restriction : DTAUtilities.listSubjects(OWL.onProperty, element))
-    			statements.addAll(DTAUtilities.getStatementsOn(model, restriction));
-	}
+		for (Resource subject : DTAUtilities.listSubjects(null, element))
+			if (subject.isAnon())
+				statements.addAll(DTAUtilities.listStatementsOn(model, subject));
+}
 
 	@Override
 	public void undo() {

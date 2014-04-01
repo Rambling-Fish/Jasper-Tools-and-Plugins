@@ -29,7 +29,7 @@ import com.coralcea.jasper.tools.dta.editors.DTAEditor;
 import com.hp.hpl.jena.ontology.OntModel;
 
 public class DTAModelWizard extends Wizard implements INewWizard {
-	private DTAModelWizardPage page;
+	private DTAModelWizardPage modelPage;
 	private IStructuredSelection selection;
 
 	/**
@@ -45,8 +45,7 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 	 */
 
 	public void addPages() {
-		page = new DTAModelWizardPage(selection);
-		addPage(page);
+		addPage(modelPage = new DTAModelWizardPage(selection));
 	}
 
 	/**
@@ -55,13 +54,15 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 	 * using wizard as execution context.
 	 */
 	public boolean performFinish() {
-		final IProject project = page.getProject();
-		final String modelURI = page.getModelURI();
-		final String modelNamespace = page.getModelNamespace();
+		final IProject project = modelPage.getProject();
+		final String modelFile = modelPage.getModelFile();
+		final String modelName = modelPage.getModelName();
+		final String modelNamespace = modelPage.getModelNamespace();
+		final String dtaName = modelPage.getDTAName();
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException {
 				try {
-					doFinish(project, modelURI, modelNamespace, monitor);
+					doFinish(project, modelFile, modelName, modelNamespace, dtaName, monitor);
 				} catch (CoreException e) {
 					throw new InvocationTargetException(e);
 				} finally {
@@ -81,21 +82,11 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 		return true;
 	}
 	
-	private void doFinish(IProject project, String modelURI, String modelNamespace, IProgressMonitor monitor) throws CoreException {
+	private void doFinish(IProject project, String modelFile, String modelName, String modelNamespace, String dtaName, IProgressMonitor monitor) throws CoreException {
 		monitor.beginTask("Creating model", 1);
-		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+project.getName()+"."+DTA.EXTENSION));
+		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelFile));
+		createModel(project, file, modelName, modelNamespace, dtaName, monitor);
 		
-		OntModel model = DTACore.createNewModel(file);
-		model.setNsPrefix("", modelNamespace);
-		model.createOntology(modelURI);
-		model.createIndividual(modelNamespace+project.getName(), DTA.DTA);
-		
-		try {
-			DTACore.saveModel(model, file, false, monitor);
-		} catch (Exception e) {
-		    Activator.getDefault().log("Failed to create new DTA model", e);
-		}
-
 		new UIJob("Open DATA Model") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
 				try {
@@ -110,6 +101,21 @@ public class DTAModelWizard extends Wizard implements INewWizard {
 		}.schedule();
 		
 		monitor.worked(1);
+	}
+	
+	private void createModel(IProject project, IFile file, String modelName, String modelNamespace, String dtaName, IProgressMonitor monitor) {
+		OntModel model = DTACore.createNewModel();
+		model.setNsPrefix("", modelNamespace);
+		model.createOntology(modelName);
+		model.createIndividual(dtaName, DTA.DTA);
+		
+		try {
+			DTACore.saveModel(model, file, false, monitor);
+		} catch (Exception e) {
+		    Activator.getDefault().log("Failed to create new DTA model", e);
+		}
+
+		model.close();
 	}
 	
 	/**

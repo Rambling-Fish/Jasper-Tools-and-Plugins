@@ -1,7 +1,7 @@
 package com.coralcea.jasper.tools.dta.diagrams;
 
 import java.util.ArrayList;
-import java.util.Iterator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 
@@ -33,17 +33,23 @@ import org.eclipse.swt.SWT;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.SetPropertyCommand;
-import com.hp.hpl.jena.ontology.OntClass;
+import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.ontology.Ontology;
-import com.hp.hpl.jena.rdf.model.RDFNode;
+import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Resource;
+import com.hp.hpl.jena.rdf.model.Statement;
+import com.hp.hpl.jena.rdf.model.StmtIterator;
+import com.hp.hpl.jena.vocabulary.OWL;
+import com.hp.hpl.jena.vocabulary.RDF;
 import com.hp.hpl.jena.vocabulary.RDFS;
-import com.hp.hpl.jena.vocabulary.XSD;
 
-public class DTAClassDiagramEditPart extends DTAResourceNodeEditPart {
+public class DTAUMLDiagramEditPart extends DTAResourceNodeEditPart {
 
-	public DTAClassDiagramEditPart(Ontology ontology) {
+	private List<OntResource> modelChildren;
+	private List<Statement> modelConnections;
+
+	public DTAUMLDiagramEditPart(Ontology ontology) {
 		super(ontology);
 	}
 	
@@ -68,8 +74,60 @@ public class DTAClassDiagramEditPart extends DTAResourceNodeEditPart {
 	}
 
 	@Override
-	protected List<OntClass> getModelChildren() {
-		return getRelevantClasses();
+	public void removeNotify() {
+		super.removeNotify();
+		modelChildren = null;
+		modelConnections = null;
+	}
+
+	public List<Statement> getModelConnections() {
+		if (modelConnections == null)
+			collectRelevantElements();
+		return modelConnections;
+	}
+
+	@Override
+	protected List<OntResource> getModelChildren() {
+		if (modelChildren == null)
+			collectRelevantElements();
+		return modelChildren;
+	}
+	
+	protected void collectRelevantElements() {
+		Set<OntResource> relevantChildren = new HashSet<OntResource>();
+		modelConnections = new ArrayList<Statement>();
+		OntModel model = getOntology().getOntModel();
+		
+		StmtIterator i = DTAUtilities.listStatementsOfPredicates(model.getBaseModel(), new Property[]{
+			RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range, OWL.equivalentProperty, 
+			DTA.operation, DTA.request,	DTA.input, DTA.output
+		});
+		while (i.hasNext()) {
+			Statement s = i.next();
+			OntResource subject = model.getOntResource(s.getSubject());
+			OntResource object = model.getOntResource(s.getObject().asResource());
+			if (!model.contains(subject, RDF.type) || !model.contains(object, RDF.type))
+				continue;
+			if (DTAUtilities.isTypedBy(subject, new Resource[] {RDFS.Datatype, OWL.AnnotationProperty, OWL.OntologyProperty}))
+				continue;
+			if (DTAUtilities.isTypedBy(object, new Resource[] {RDFS.Datatype, OWL.AnnotationProperty, OWL.OntologyProperty}))
+				continue;
+			modelConnections.add(s);
+			if (DTAUtilities.isTypedBy(subject, new Resource[] {OWL.Class, DTA.DTA}))
+				relevantChildren.add(subject);
+			if (DTAUtilities.isTypedBy(object, new Resource[] {OWL.Class, DTA.DTA}))
+				relevantChildren.add(object);
+		}
+			
+		i = DTAUtilities.listStatementsOfPredicates(model.getBaseModel(), new Property[]{RDF.type});
+		while (i.hasNext()) {
+			Statement s = i.next();
+			OntResource subject = model.getOntResource(s.getSubject());
+			if (DTAUtilities.isTypedBy(subject, new Resource[] {OWL.Class, DTA.DTA}))
+				relevantChildren.add(subject);
+		}
+		
+		modelChildren = new ArrayList<OntResource>(relevantChildren);
 	}
 
 	@Override
@@ -81,62 +139,9 @@ public class DTAClassDiagramEditPart extends DTAResourceNodeEditPart {
 			cLayer.setAntialias(SWT.ON);
 
 		FanRouter router = new FanRouter();
-		router.setNextRouter(new DTABendpointConnectionRouter());
 		cLayer.setConnectionRouter(router);
 
 		Animation.run(400);
-	}
-
-	private List<OntClass> getRelevantClasses() {
-		List<OntClass> relevantTypes = new ArrayList<OntClass>();
-		
-		for(Iterator<Resource> i = DTAUtilities.listDefinedResources(getOntology(), DTA.DTA); i.hasNext();) {
-			Resource dta = i.next();
-			
-			Set<RDFNode> operations = DTAUtilities.listObjects(dta, DTA.operation);
-			operations.addAll(DTAUtilities.listObjects(dta, DTA.request));
-			
-			for(RDFNode n : operations) {
-				Resource op = (Resource) n;
-				
-				Resource input = op.getPropertyResourceValue(DTA.input);
-				if (input != null) {
-					Resource ptype = input.getPropertyResourceValue(RDFS.range);
-					if (ptype != null && !ptype.getNameSpace().equals(XSD.getURI()))
-						getRelevantClasses(ptype.as(OntClass.class), relevantTypes);
-				}
-				Resource output = op.getPropertyResourceValue(DTA.output);
-				if (output != null) {
-					Resource ptype = output.getPropertyResourceValue(RDFS.range);
-					if (ptype != null && !ptype.getNameSpace().equals(XSD.getURI()))
-						getRelevantClasses(ptype.as(OntClass.class), relevantTypes);
-				}
-			}
-		}
-		
-		for(Iterator<Resource> i = DTAUtilities.listDefinedClasses(getOntology()); i.hasNext();) {
-			Resource type = i.next();
-			getRelevantClasses(type.as(OntClass.class), relevantTypes);
-		}
-		
-		return relevantTypes;
-	}
-
-	private void getRelevantClasses(OntClass type, List<OntClass> relevantTypes) {
-        if (relevantTypes.contains(type))
-        	return;
-        relevantTypes.add(type);
-		for (Resource p : DTAUtilities.getDeclaredProperties(type)) {
-			Resource ptype = p.getPropertyResourceValue(RDFS.range);
-			if (ptype != null && !ptype.getNameSpace().equals(XSD.getURI()))
-				getRelevantClasses(ptype.as(OntClass.class), relevantTypes);
-        }
-		for (RDFNode supertype : DTAUtilities.listObjects(type, RDFS.subClassOf)) {
-			getRelevantClasses(supertype.as(OntClass.class), relevantTypes);
-        }
-		for (Resource subtype : DTAUtilities.listSubjects(RDFS.subClassOf, type)) {
-			getRelevantClasses(subtype.as(OntClass.class), relevantTypes);
-        }
 	}
 
 	@Override
@@ -157,7 +162,6 @@ public class DTAClassDiagramEditPart extends DTAResourceNodeEditPart {
 			CompoundCommand cc = new CompoundCommand("Change Position");
 			cc.add(new SetPropertyCommand(resource, DTA.x, resource.getModel().createTypedLiteral(rect.x)));
 			cc.add(new SetPropertyCommand(resource, DTA.y, resource.getModel().createTypedLiteral(rect.y)));
-			//cc.add(new RefreshEditPartCommand(child.getRoot()));
 			return cc;
 		}
 	}

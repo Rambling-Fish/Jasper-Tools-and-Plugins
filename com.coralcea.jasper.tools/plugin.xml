@@ -23,6 +23,20 @@
       </wizard>   
    </extension>
    <extension
+         point="org.eclipse.ui.importWizards">
+       <category
+            id="com.coralcea.jasper.wizards"
+            name="Jasper">
+      </category>
+      <wizard
+            id="com.coralcea.jasper.wizards.DTALibrary"
+            name="DTA Library From OWL/RDFS"
+            category="com.coralcea.jasper.wizards"
+            class="com.coralcea.jasper.tools.dta.wizards.DTAImportOwlWizard"
+            icon="icons/file.gif">
+      </wizard>   
+   </extension>
+   <extension
          point="org.eclipse.ui.editors">
       <editor
             name="DTA Editor"
@@ -110,5 +124,10 @@
 			</or>
          </selectionEnablement>
       </linkHelper>
+   </extension>
+   <extension 
+   		point="org.eclipse.core.resources.markers" id="com.coralcea.jasper.markers.DTA" name="DTA Problem"> 
+      <persistent value="true"/> 
+      <super type="org.eclipse.core.resources.problemmarker"/> 
    </extension>
 </plugin>

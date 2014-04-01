@@ -29,11 +29,13 @@ import com.coralcea.jasper.tools.dta.DTAUtilities;
 
 public class DTAModelWizardPage extends WizardPage {
 
-	public static final String NATURE = "org.mule.tooling.core.muleNature";
+	public static final String MULE_NATURE = "org.mule.tooling.core.muleNature";
 	
 	private ComboViewer projectName;
-	private Text modelURI;
+	private Text modelFile;
+	private Text modelName;
 	private Text modelNamespace;
+	private Text dtaName;
 	private IStructuredSelection selection;
 	
 	/**
@@ -56,8 +58,8 @@ public class DTAModelWizardPage extends WizardPage {
 		container.setLayout(new GridLayout(2, false));
 		
 		Label label = new Label(container, SWT.NULL);
-		label.setText("Mule &project:");
-		label.setToolTipText("The path to a Mule priject");
+		label.setText("Mule project:");
+		label.setToolTipText("The path to a Mule project");
 
 		projectName = new ComboViewer(container, SWT.READ_ONLY);
 		projectName.setContentProvider(ArrayContentProvider.getInstance());
@@ -69,54 +71,88 @@ public class DTAModelWizardPage extends WizardPage {
         });
 		projectName.addFilter(new ViewerFilter() {
 			public boolean select(Viewer viewer, Object parentElement, Object element) {
-				return DTAUtilities.hasNature((IProject)element, NATURE);
+				return DTAUtilities.hasNature((IProject)element, MULE_NATURE);
 			}
 		});
 		projectName.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
-				dialogChanged();
 				IProject project = getProject();
 				if (project != null) {
-					String modelName = project.getName().toLowerCase();
-					String uri = getModelURI();
-					if (uri.length()==0)
-						modelURI.setText("http://mycompany.com/"+modelName);
-					else {
-						uri = uri.substring(0, uri.lastIndexOf('/')+1);
-						modelURI.setText(uri+modelName);
-					}
+					String projectName = project.getName();
+					modelFile.setText(projectName+"."+DTA.EXTENSION);
 				}
+				dialogChanged();
 			}
 		});
 		projectName.setInput(ResourcesPlugin.getWorkspace().getRoot().getProjects());
         
 		label = new Label(container, SWT.NULL);
-		label.setText("Model &URI:");
-		label.setToolTipText("The unique URI of the DTA model");
+		label.setText("Model file:");
+		label.setToolTipText("The unique name of the DTA model file");
 
-		modelURI = new Text(container, SWT.BORDER | SWT.SINGLE);
-		modelURI.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		modelURI.addModifyListener(new ModifyListener() {
+		modelFile = new Text(container, SWT.BORDER | SWT.SINGLE);
+		modelFile.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		modelFile.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
+				String postfix = getModelFile().toLowerCase();
+				int index = postfix.lastIndexOf('.');
+				if (index >= 0)
+					postfix = postfix.substring(0, index);
+				String name = getModelName();
+				if (name.length()==0)
+					name = "http://mycompany.com/";
+				else
+					name = name.substring(0, name.lastIndexOf('/')+1);
+				modelName.setText(name+postfix);
 				dialogChanged();
-				String uri = getModelURI();
-				String namespace = getModelNamespace();
-				if (namespace.length()==0)
-					modelNamespace.setText(uri+"#");
-				else {
-					String separator = namespace.substring(namespace.length()-1);
-					modelNamespace.setText(uri+separator);
-				}
 			}
 		});
 
 		label = new Label(container, SWT.NULL);
-		label.setText("Model &Namespace:");
+		label.setText("Model name:");
+		label.setToolTipText("The unique name of the DTA model");
+
+		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
+		modelName.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		modelName.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				String name = getModelName();
+				String namespace = getModelNamespace();
+				if (namespace.length()==0)
+					modelNamespace.setText(name+"#");
+				else {
+					String separator = namespace.substring(namespace.length()-1);
+					modelNamespace.setText(name+separator);
+				}
+				dialogChanged();
+			}
+		});
+
+		label = new Label(container, SWT.NULL);
+		label.setText("Default namespace:");
 		label.setToolTipText("The default namespace of the DTA model");
 
 		modelNamespace = new Text(container, SWT.BORDER | SWT.SINGLE);
 		modelNamespace.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		modelNamespace.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				String postfix = getModelFile();
+				int index = postfix.lastIndexOf('.');
+				if (index >= 0)
+					postfix = postfix.substring(0, index);
+				String namespace = getModelNamespace();
+				dtaName.setText(namespace+postfix);
+				dialogChanged();
+			}
+		});
+
+		label = new Label(container, SWT.NULL);
+		label.setText("DTA name:");
+		label.setToolTipText("The unique name of the DTA");
+
+		dtaName = new Text(container, SWT.BORDER | SWT.SINGLE);
+		dtaName.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		dtaName.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
 				dialogChanged();
 			}
@@ -139,7 +175,7 @@ public class DTAModelWizardPage extends WizardPage {
 				obj = ((IAdaptable)obj).getAdapter(IResource.class);
 			if (obj instanceof IResource) {
 				IProject project = ((IResource) obj).getProject();
-				if (DTAUtilities.hasNature(project, NATURE))
+				if (DTAUtilities.hasNature(project, MULE_NATURE))
 					projectName.setSelection(new StructuredSelection(project));
 			}
 		}
@@ -160,19 +196,34 @@ public class DTAModelWizardPage extends WizardPage {
 			return;
 		}
 		
-		IResource model = project.findMember("src/main/app/"+project.getName()+"."+DTA.EXTENSION);
-		if (model != null && model.exists()) {
-			updateStatus("DTA model already exists for this project");
-			return;
-		}
-		
-		if (!DTAUtilities.isValidURI(getModelURI())) {
-			updateStatus("Invalid model URI");
+		if (!getModelFile().endsWith("."+DTA.EXTENSION)) {
+			updateStatus("File must end with .dta");
 			return;
 		}
 
-		if (!DTAUtilities.isValidNsURI(getModelNamespace())) {
+		IResource model = project.findMember("src/main/app/"+getModelFile());
+		if (model != null && model.exists()) {
+			updateStatus("Model file already exists in this project");
+			return;
+		}
+		
+		if (!DTAUtilities.isValidURI(getModelName())) {
+			updateStatus("Invalid model name");
+			return;
+		}
+
+		if (getModelNamespace().length()>0 && !DTAUtilities.isValidNsURI(getModelNamespace())) {
 			updateStatus("Invalid model namespace");
+			return;
+		}
+
+		if (!DTAUtilities.isValidURI(getDTAName())) {
+			updateStatus("Invalid DTA name");
+			return;
+		}
+
+		if (getDTAName().equals(getModelName())) {
+			updateStatus("Model and DTA have the same name");
 			return;
 		}
 
@@ -188,12 +239,19 @@ public class DTAModelWizardPage extends WizardPage {
 		return (IProject) ((IStructuredSelection)projectName.getSelection()).getFirstElement();
 	}
 
-	public String getModelURI() {
-		return modelURI.getText();
+	public String getModelFile() {
+		return modelFile.getText();
+	}
+
+	public String getModelName() {
+		return modelName.getText();
 	}
 
 	public String getModelNamespace() {
 		return modelNamespace.getText();
 	}
 
+	public String getDTAName() {
+		return dtaName.getText();
+	}
 }

@@ -8,7 +8,7 @@ import com.hp.hpl.jena.ontology.Restriction;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Statement;
 
-public class ChangeRestrictionCommand extends DTACommand {
+public class ChangeCardinalityCommand extends DTACommand {
 
 	private OntResource element;
 	private Property kind;
@@ -17,7 +17,7 @@ public class ChangeRestrictionCommand extends DTACommand {
 	private List<Statement> oldRestriction;
 	private List<Statement> newRestriction;
 	
-	public ChangeRestrictionCommand(OntResource element, Property kind, Property property, String value) {
+	public ChangeCardinalityCommand(OntResource element, Property kind, Property property, String value) {
 		super("Changing Restriction");
 		this.element = element;
 		this.kind = kind;
@@ -27,9 +27,9 @@ public class ChangeRestrictionCommand extends DTACommand {
 
 	@Override
 	public void prepare() {
-		Restriction r = DTAUtilities.getRestriction(element, kind, property);
+		Restriction r = DTAUtilities.getDirectRestriction(element, kind, property);
 		if (r!=null)
-			oldRestriction = DTAUtilities.getStatementsOn(element.getOntModel().getBaseModel(), r);
+			oldRestriction = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
 		
 		r = null;
 		if (value.equals("0..1"))
@@ -40,7 +40,7 @@ public class ChangeRestrictionCommand extends DTACommand {
 			r = element.getOntModel().createCardinalityRestriction(null, property, 1);
 		if (r!=null) {
 			element.addProperty(kind, r);
-			newRestriction = DTAUtilities.getStatementsOn(element.getOntModel().getBaseModel(), r);
+			newRestriction = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
 		}
 	}
 

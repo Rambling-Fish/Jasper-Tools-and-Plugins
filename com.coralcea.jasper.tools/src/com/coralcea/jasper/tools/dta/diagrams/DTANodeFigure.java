@@ -21,7 +21,7 @@ import org.eclipse.draw2d.EllipseAnchor;
 import org.eclipse.draw2d.Figure;
 import org.eclipse.draw2d.geometry.Point;
 
-public class DTANodeFigure extends Figure {
+public class DTANodeFigure extends Figure implements DTANode {
 
 	protected Map<String, ConnectionAnchor> connectionAnchors;
 	protected List<ConnectionAnchor> inputConnectionAnchors;
@@ -39,37 +39,6 @@ public class DTANodeFigure extends Figure {
 		return (ConnectionAnchor) connectionAnchors.get(terminal);
 	}
 
-	public List<ConnectionAnchor> getSourceConnectionAnchors() {
-		return outputConnectionAnchors;
-	}
-
-	public List<ConnectionAnchor> getTargetConnectionAnchors() {
-		return inputConnectionAnchors;
-	}
-
-	public ConnectionAnchor connectionAnchorAt(Point p) {
-		ConnectionAnchor closest = null;
-		double min = Double.MAX_VALUE;
-
-		for (ConnectionAnchor c : getSourceConnectionAnchors()) {
-			Point p2 = c.getLocation(null);
-			double d = p.getDistance(p2);
-			if (d < min) {
-				min = d;
-				closest = c;
-			}
-		}
-		for (ConnectionAnchor c : getTargetConnectionAnchors()) {
-			Point p2 = c.getLocation(null);
-			double d = p.getDistance(p2);
-			if (d < min) {
-				min = d;
-				closest = c;
-			}
-		}
-		return closest;
-	}
-
 	public String getConnectionAnchorName(ConnectionAnchor c) {
 		for(String key : connectionAnchors.keySet()) {
 			if (connectionAnchors.get(key).equals(c))
@@ -82,7 +51,7 @@ public class DTANodeFigure extends Figure {
 		ConnectionAnchor closest = null;
 		double min = Double.MAX_VALUE;
 
-		for (ConnectionAnchor c : getSourceConnectionAnchors()) {
+		for (ConnectionAnchor c : outputConnectionAnchors) {
 			Point p2 = c.getLocation(null);
 			double d = p.getDistance(p2);
 			if (d < min) {
@@ -97,7 +66,7 @@ public class DTANodeFigure extends Figure {
 		ConnectionAnchor closest = null;
 		double min = Double.MAX_VALUE;
 
-		for (ConnectionAnchor c : getTargetConnectionAnchors()) {
+		for (ConnectionAnchor c : inputConnectionAnchors) {
 			Point p2 = c.getLocation(null);
 			double d = p.getDistance(p2);
 			if (d < min) {

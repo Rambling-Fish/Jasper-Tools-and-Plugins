@@ -1,21 +1,20 @@
 package com.coralcea.jasper.tools.dta.commands;
 
-import com.hp.hpl.jena.ontology.OntModel;
-import com.hp.hpl.jena.ontology.OntResource;
+import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.util.ResourceUtils;
 
 public class RenameResourceCommand extends DTACommand {
 
-	private OntModel model;
+	private Model model;
 	private String oldURI;
 	private String newURI;
 	
-	public RenameResourceCommand(OntResource element, String newURI) {
+	public RenameResourceCommand(Resource element, Resource newElement) {
 		super("Renaming Resource");
-		this.model = element.getOntModel();
+		this.model = element.getModel();
 		this.oldURI = element.getURI();
-		this.newURI = newURI;
+		this.newURI = newElement.getURI();
 	}
 
 	@Override

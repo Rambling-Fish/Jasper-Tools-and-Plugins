@@ -9,20 +9,16 @@ import org.eclipse.gef.EditPolicy;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.editpolicies.NonResizableEditPolicy;
 
-import com.coralcea.jasper.tools.dta.DTA;
-import com.coralcea.jasper.tools.dta.DTAUtilities;
-import com.hp.hpl.jena.ontology.OntClass;
-import com.hp.hpl.jena.ontology.OntProperty;
-import com.hp.hpl.jena.ontology.Restriction;
+import com.hp.hpl.jena.ontology.OntResource;
 
-public class DTAPropertyEditPart extends DTAResourceNodeEditPart {
+public class DTAOperationEditPart extends DTAResourceNodeEditPart {
 	
-	public DTAPropertyEditPart(OntProperty property) {
-		super(property);
+	public DTAOperationEditPart(OntResource operation) {
+		super(operation);
 	}
 
-	protected OntProperty getOntProperty() {
-		return (OntProperty) getModel();
+	protected OntResource getOperation() {
+		return getOntResource();
 	}
 
 	@Override
@@ -37,14 +33,10 @@ public class DTAPropertyEditPart extends DTAResourceNodeEditPart {
 	protected void refreshVisuals() {
 		super.refreshVisuals();
 
-		OntClass aClass = ((DTAClassEditPart)getParent()).getOntClass();
-		Restriction initial = DTAUtilities.getDirectRestriction(aClass, DTA.restriction, getOntProperty());
-	    String initialValue = " ["+DTAUtilities.getCardinality(initial)+"]";
-
 		Label label = (Label)getFigure();
-		label.setText(getLabelProvider().getText(getOntProperty())+initialValue);
-		label.setToolTip(new Label(getOntProperty().getURI()));
-		label.setIcon(getLabelProvider().getImage(getOntProperty()));
+		label.setText(getLabelProvider().getText(getOperation()));
+		label.setToolTip(new Label(getOperation().getURI()));
+		label.setIcon(getLabelProvider().getImage(getOperation()));
 	}
 	
 	@Override

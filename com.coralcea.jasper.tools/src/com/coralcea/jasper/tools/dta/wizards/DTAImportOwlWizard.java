@@ -13,7 +13,7 @@ import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.wizard.Wizard;
-import org.eclipse.ui.INewWizard;
+import org.eclipse.ui.IImportWizard;
 import org.eclipse.ui.IWorkbench;
 import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWizard;
@@ -30,16 +30,16 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Model;
 
-public class DTALibraryWizard extends Wizard implements INewWizard {
-	private DTALibraryWizardPage libraryPage;
+public class DTAImportOwlWizard extends Wizard implements IImportWizard {
+	private DTAImportOwlWizardPage importPage;
 	private IStructuredSelection selection;
 
 	/**
 	 * Constructor for ConvertToDTA.
 	 */
-	public DTALibraryWizard() {
+	public DTAImportOwlWizard() {
 		setNeedsProgressMonitor(true);
-		setWindowTitle("New DTA Model");
+		setWindowTitle("Import DTA Model");
 	}
 	
 	/**
@@ -47,7 +47,7 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 	 */
 
 	public void addPages() {
-		addPage(libraryPage = new DTALibraryWizardPage(selection));
+		addPage(importPage = new DTAImportOwlWizardPage(selection));
 	}
 
 	/**
@@ -56,14 +56,13 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 	 * using wizard as execution context.
 	 */
 	public boolean performFinish() {
-		final IProject project = libraryPage.getProject();
-		final String modelFile = libraryPage.getModelFile();
-		final String modelName = libraryPage.getModelName();
-		final String modelNamespace = libraryPage.getModelNamespace();
+		final IProject project = importPage.getProject();
+		final String modelName = importPage.getModelName();
+		final OntModel loadedModel = importPage.getLoadedModel();
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException {
 				try {
-					doFinish(project, modelFile, modelName, modelNamespace, monitor);
+					doFinish(project, modelName, loadedModel, monitor);
 				} catch (CoreException e) {
 					throw new InvocationTargetException(e);
 				} finally {
@@ -83,11 +82,23 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 		return true;
 	}
 	
-	private void doFinish(IProject project, String modelFile, String modelName, String modelNamespace, IProgressMonitor monitor) throws CoreException {
+	private void doFinish(IProject project, String modelName, OntModel loadedModel, IProgressMonitor monitor) throws CoreException {
 		monitor.beginTask("Creating library", 1);
-		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelFile));
-		createLibrary(file, modelName, modelNamespace, monitor);
-		updatePolicy(project, modelName, modelName);
+		
+		Ontology ont = loadedModel.listOntologies().next();
+		ont.setPropertyValue(DTA.isLibrary, loadedModel.createTypedLiteral(true));
+
+		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelName+"."+DTA.EXTENSION));
+		try {
+			DTACore.saveModel(loadedModel, file, false, monitor);
+		} catch (CoreException e) {
+		    Activator.getDefault().log("Failed to create new DTA library", e);
+		}
+		
+		String modelURI = loadedModel.listOntologies().next().getURI();
+		loadedModel.close();
+		
+		updatePolicy(project, modelName, modelURI);
 		
 		new UIJob("Open DATA Library") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
@@ -103,22 +114,6 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 		}.schedule();
 		
 		monitor.done();
-	}
-	
-	private void createLibrary(IFile file, String modelName, String modelNamespace, IProgressMonitor monitor) {
-		OntModel model = DTACore.createNewModel();
-		if (modelNamespace.length()>0)
-			model.setNsPrefix("", modelNamespace);
-		Ontology ont = model.createOntology(modelName);
-		ont.setPropertyValue(DTA.isLibrary, model.createTypedLiteral(true));
-		
-		try {
-			DTACore.saveModel(model, file, false, monitor);
-		} catch (CoreException e) {
-		    Activator.getDefault().log("Failed to create new DTA library", e);
-		}
-
-		model.close();
 	}
 	
 	private void updatePolicy(IProject project, String modelName, String modelURI) {

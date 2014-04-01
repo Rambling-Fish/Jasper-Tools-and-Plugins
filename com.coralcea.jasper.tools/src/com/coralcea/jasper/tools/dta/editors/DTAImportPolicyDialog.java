@@ -50,7 +50,7 @@ public class DTAImportPolicyDialog extends Dialog {
 	public static void openToEdit(Shell shell, DTAEditor editor) {
 		String title = "Import Policy";
 		String prompt = "Configure a map between imported model URIs and their file URLs:";
-		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor);
+		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor.getFile());
 		if (dialog.open() == Dialog.OK)
 			reloadEditor(editor);
 	}
@@ -58,7 +58,7 @@ public class DTAImportPolicyDialog extends Dialog {
 	public static List<String> openToSelect(Shell shell, DTAEditor editor) {
 		String title = "Add Import";
 		String prompt = "Select a model to import:";
-		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor);
+		DTAImportPolicyDialog dialog = new DTAImportPolicyDialog(shell, title, prompt, editor.getFile());
 		if (dialog.open() == Dialog.OK) {
 			    return dialog.selectedImports;
 		}
@@ -72,7 +72,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		}
 	}
 
-	protected DTAEditor editor;
+	protected IFile modelFile;
 	protected IFile policy;
 	protected Model model;
 	protected String title;
@@ -80,11 +80,11 @@ public class DTAImportPolicyDialog extends Dialog {
 	protected TableViewer viewer;
 	protected List<String> selectedImports;
 	
-	protected DTAImportPolicyDialog(Shell shell, String title, String prompt, DTAEditor editor) {
+	protected DTAImportPolicyDialog(Shell shell, String title, String prompt, IFile modelFile) {
 		super(shell);
 		setShellStyle(getShellStyle() | SWT.RESIZE);
 		
-		this.editor = editor;
+		this.modelFile = modelFile;
 		this.title = title;
 		this.prompt = prompt;
 		this.selectedImports = new ArrayList<String>();
@@ -105,7 +105,7 @@ public class DTAImportPolicyDialog extends Dialog {
 	}
 
 	protected void loadImportPolicyModel() {
-        IContainer folder = editor.getFile().getParent();
+        IContainer folder = modelFile.getParent();
 		policy = folder.getFile(Path.fromOSString(DTA.IMPORT_POLICY));
 		model = DTACore.loadImportPolicyModel(policy);
 	}
@@ -155,7 +155,7 @@ public class DTAImportPolicyDialog extends Dialog {
 		TableViewerColumn colURI = new TableViewerColumn(viewer, SWT.NONE);
 		colURI.setEditingSupport(new CellEditingSupport(viewer, OntDocumentManager.PUBLIC_URI)); 
 		colURI.getColumn().setWidth(200);
-		colURI.getColumn().setText("Model URI");
+		colURI.getColumn().setText("Model Name");
 		colURI.setLabelProvider(new ColumnLabelProvider() {
 		  public String getText(Object element) {
 		    Resource r = (Resource) element;
@@ -221,7 +221,7 @@ public class DTAImportPolicyDialog extends Dialog {
 			this.editor = new TextCellEditor(viewer.getTable());
 			this.editor.setValidator(new ICellEditorValidator() {
 				public String isValid(Object value) {
-					return DTAUtilities.isValidURI((String)value) ? null : "Invalid URI";
+					return DTAUtilities.isValidURI((String)value) ? null : "Invalid Name";
 				}
 			});
 			this.property = property;

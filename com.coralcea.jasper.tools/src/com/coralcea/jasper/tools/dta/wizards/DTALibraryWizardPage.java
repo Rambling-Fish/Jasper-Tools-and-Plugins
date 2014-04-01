@@ -29,11 +29,11 @@ import com.coralcea.jasper.tools.dta.DTAUtilities;
 
 public class DTALibraryWizardPage extends WizardPage {
 
-	public static final String NATURE = "org.mule.tooling.core.muleNature";
+	public static final String MULE_NATURE = "org.mule.tooling.core.muleNature";
 	
 	private ComboViewer projectName;
+	private Text modelFile;
 	private Text modelName;
-	private Text modelURI;
 	private Text modelNamespace;
 	private IStructuredSelection selection;
 	
@@ -57,8 +57,8 @@ public class DTALibraryWizardPage extends WizardPage {
 		container.setLayout(new GridLayout(2, false));
 		
 		Label label = new Label(container, SWT.NULL);
-		label.setText("Mule &project:");
-		label.setToolTipText("The path to a Mule priject");
+		label.setText("Mule project:");
+		label.setToolTipText("The path to a Mule project");
 
 		projectName = new ComboViewer(container, SWT.READ_ONLY);
 		projectName.setContentProvider(ArrayContentProvider.getInstance());
@@ -70,61 +70,63 @@ public class DTALibraryWizardPage extends WizardPage {
         });
 		projectName.addFilter(new ViewerFilter() {
 			public boolean select(Viewer viewer, Object parentElement, Object element) {
-				return DTAUtilities.hasNature((IProject)element, NATURE);
+				return DTAUtilities.hasNature((IProject)element, MULE_NATURE);
 			}
 		});
 		projectName.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
-				dialogChanged();
 				IProject project = getProject();
-				if (project != null && getModelName().length()==0)
-					modelName.setText("Library1");
+				if (project != null && getModelFile().length()==0)
+					modelFile.setText("Library1.dta");
+				dialogChanged();
 			}
 		});
 		projectName.setInput(ResourcesPlugin.getWorkspace().getRoot().getProjects());
         
 		label = new Label(container, SWT.NULL);
-		label.setText("Library &Name:");
+		label.setText("Library file:");
+		label.setToolTipText("The unique name of the DTA library file");
+
+		modelFile = new Text(container, SWT.BORDER | SWT.SINGLE);
+		modelFile.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		modelFile.addModifyListener(new ModifyListener() {
+			public void modifyText(ModifyEvent e) {
+				String postfix = getModelFile().toLowerCase();
+				int index = postfix.lastIndexOf('.');
+				if (index >= 0)
+					postfix = postfix.substring(0, index);
+				String name = getModelName();
+				if (name.length()==0)
+					name = "http://mycompany.com/";
+				else
+					name = name.substring(0, name.lastIndexOf('/')+1);
+				modelName.setText(name+postfix);
+				dialogChanged();
+			}
+		});
+
+		label = new Label(container, SWT.NULL);
+		label.setText("Library name:");
 		label.setToolTipText("The unique name of the DTA library");
 
 		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
 		modelName.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		modelName.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
-				dialogChanged();
-				String name = getModelName().toLowerCase();
-				String uri = getModelURI();
-				if (uri.length()==0)
-					modelURI.setText("http://mycompany.com/"+name);
-				else {
-					String path = uri.substring(0, uri.lastIndexOf('/', uri.length()-2)+1);
-					modelURI.setText(path+name);
-				}
-			}
-		});
-
-		label = new Label(container, SWT.NULL);
-		label.setText("Library &URI:");
-		label.setToolTipText("The unique URI of the DTA library");
-
-		modelURI = new Text(container, SWT.BORDER | SWT.SINGLE);
-		modelURI.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		modelURI.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				dialogChanged();
-				String uri = getModelURI();
+				String name = getModelName();
 				String namespace = getModelNamespace();
 				if (namespace.length()==0)
-					modelNamespace.setText(uri+"#");
+					modelNamespace.setText(name+"#");
 				else {
 					String separator = namespace.substring(namespace.length()-1);
-					modelNamespace.setText(uri+separator);
+					modelNamespace.setText(name+separator);
 				}
+				dialogChanged();
 			}
 		});
 
 		label = new Label(container, SWT.NULL);
-		label.setText("Library &Namespace:");
+		label.setText("Default namespace:");
 		label.setToolTipText("The default namespace of the DTA library");
 
 		modelNamespace = new Text(container, SWT.BORDER | SWT.SINGLE);
@@ -134,7 +136,7 @@ public class DTALibraryWizardPage extends WizardPage {
 				dialogChanged();
 			}
 		});
-
+		
 		initialize();
 		dialogChanged();
 		setControl(container);
@@ -152,7 +154,7 @@ public class DTALibraryWizardPage extends WizardPage {
 				obj = ((IAdaptable)obj).getAdapter(IResource.class);
 			if (obj instanceof IResource) {
 				IProject project = ((IResource) obj).getProject();
-				if (DTAUtilities.hasNature(project, NATURE))
+				if (DTAUtilities.hasNature(project, MULE_NATURE))
 					projectName.setSelection(new StructuredSelection(project));
 			}
 		}
@@ -173,18 +175,23 @@ public class DTALibraryWizardPage extends WizardPage {
 			return;
 		}
 		
-		IResource model = project.findMember("src/main/app/"+getModelName()+"."+DTA.EXTENSION);
-		if (model != null && model.exists()) {
-			updateStatus("DTA library already exists for this project");
-			return;
-		}
-		
-		if (!DTAUtilities.isValidURI(getModelURI())) {
-			updateStatus("Invalid library URI");
+		if (!getModelFile().endsWith("."+DTA.EXTENSION)) {
+			updateStatus("File must end with .dta");
 			return;
 		}
 
-		if (!DTAUtilities.isValidNsURI(getModelNamespace())) {
+		IResource model = project.findMember("src/main/app/"+getModelFile());
+		if (model != null && model.exists()) {
+			updateStatus("Library file already exists in this project");
+			return;
+		}
+		
+		if (!DTAUtilities.isValidURI(getModelName())) {
+			updateStatus("Invalid library name");
+			return;
+		}
+
+		if (getModelNamespace().length()>0 && !DTAUtilities.isValidNsURI(getModelNamespace())) {
 			updateStatus("Invalid library namespace");
 			return;
 		}
@@ -201,12 +208,12 @@ public class DTALibraryWizardPage extends WizardPage {
 		return (IProject) ((IStructuredSelection)projectName.getSelection()).getFirstElement();
 	}
 
-	public String getModelName() {
-		return modelName.getText();
+	public String getModelFile() {
+		return modelFile.getText();
 	}
 
-	public String getModelURI() {
-		return modelURI.getText();
+	public String getModelName() {
+		return modelName.getText();
 	}
 
 	public String getModelNamespace() {

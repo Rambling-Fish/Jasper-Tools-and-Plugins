@@ -15,7 +15,6 @@ import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
 
 import com.coralcea.jasper.tools.dta.DTA;
-import com.coralcea.jasper.tools.dta.commands.RefreshEditPartCommand;
 import com.coralcea.jasper.tools.dta.commands.SetPropertyCommand;
 import com.hp.hpl.jena.ontology.OntResource;
 
@@ -50,10 +49,11 @@ public class DTAGraphLayoutManager {
 				Node source = nodeMap.get(connection.getSource());
 				Node target = nodeMap.get(connection.getTarget());
 				
-				Edge edge = new Edge(connection.getModel(), source, target);
-				edge.setDelta(2);
-				
-				edgeMap.put(connection, edge);
+				if (target != null && source != target) {
+					Edge edge = new Edge(connection.getModel(), source, target);
+					edge.setDelta(2);
+					edgeMap.put(connection, edge);
+				}
 			}
 		}
 		graph.edges.addAll(edgeMap.values());
@@ -71,7 +71,6 @@ public class DTAGraphLayoutManager {
 			cc.add(new SetPropertyCommand(r, DTA.x, r.getModel().createTypedLiteral(node.x)));
 			cc.add(new SetPropertyCommand(r, DTA.y, r.getModel().createTypedLiteral(node.y)));
 		}
-		cc.add(new RefreshEditPartCommand(container));
 		return cc;
 	}
 
