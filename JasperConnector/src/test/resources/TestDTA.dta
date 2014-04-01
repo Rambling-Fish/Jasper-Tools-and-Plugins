@@ -1,0 +1,141 @@
+@prefix :      <http://coralcea.ca/heartratedta#> .
+@prefix rdfs:  <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix medical: <http://coralcea.ca/medical#> .
+@prefix owl:   <http://www.w3.org/2002/07/owl#> .
+@prefix xsd:   <http://www.w3.org/2001/XMLSchema#> .
+@prefix rdf:   <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix dta:   <http://coralcea.ca/2014/01/dta#> .
+
+:MSDataReq  a            owl:Class ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :sid
+                         ] ;
+        dta:x            "674"^^xsd:int ;
+        dta:y            "15"^^xsd:int .
+
+:HRDataReq  a            owl:Class ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :sid
+                         ] ;
+        dta:x            "504"^^xsd:int ;
+        dta:y            "15"^^xsd:int .
+
+:requestHRData  a              dta:Request ;
+        dta:expires            "10"^^xsd:int ;
+        dta:input              :HRDataReq ;
+        dta:kind               dta:Get ;
+        dta:output             :hrData ;
+        dta:outputRestriction  [ a                owl:Restriction ;
+                                 owl:cardinality  "1"^^xsd:int ;
+                                 owl:onProperty   :hrData
+                               ] .
+
+:requestMSData  a   dta:Request ;
+        dta:input   :MSDataReq ;
+        dta:kind    dta:Get ;
+        dta:output  :msData .
+
+:getBpm  a                     dta:Operation ;
+        dta:destination        "Queue3"^^xsd:string ;
+        dta:input              :HRDataReq ;
+        dta:kind               dta:Get ;
+        dta:output             :bpm ;
+        dta:outputRestriction  [ a                owl:Restriction ;
+                                 owl:cardinality  "1"^^xsd:int ;
+                                 owl:onProperty   :bpm
+                               ] .
+
+:hrData  a                  owl:ObjectProperty ;
+        rdfs:domain         :HRUpdateReq ;
+        rdfs:range          :HRData ;
+        rdfs:subPropertyOf  :msData .
+
+:getHRData  a            dta:Operation ;
+        dta:destination  "Queue2"^^xsd:string ;
+        dta:input        :HRDataReq ;
+        dta:kind         dta:Get ;
+        dta:output       :hrData .
+
+:msData  a          owl:ObjectProperty ;
+        rdfs:range  :MSData .
+
+:MSData  a      owl:Class ;
+        dta:x   "367"^^xsd:int ;
+        dta:y   "283"^^xsd:int .
+
+:requestBpm  a                 dta:Request ;
+        dta:input              :HRDataReq ;
+        dta:kind               dta:Get ;
+        dta:output             :bpm ;
+        dta:outputRestriction  [ a                owl:Restriction ;
+                                 owl:cardinality  "1"^^xsd:int ;
+                                 owl:onProperty   :bpm
+                               ] .
+
+:HeartRateDTA  a       dta:DTA ;
+        rdfs:comment   "This is the heart rate DTA" ;
+        dta:operation  :postHRData , :getHRData , :getBpm ;
+        dta:request    :publishHRData , :updateHRData , :requestHRData , :requestMSData , :requestBpm ;
+        dta:x          "15"^^xsd:int ;
+        dta:y          "15"^^xsd:int .
+
+<http://coralcea.ca/heartratedta>
+        a                owl:Ontology ;
+        rdfs:comment     "This is a test model" ;
+        dta:basepackage  "com.coralcea.jasper.connector.tests.generated"^^xsd:string .
+
+:HRData  a               owl:Class ;
+        rdfs:comment     "The heart rate" ;
+        rdfs:subClassOf  :MSData ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :bpm
+                         ] ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :timestamp
+                         ] ;
+        dta:x            "314"^^xsd:int ;
+        dta:y            "169"^^xsd:int .
+
+:sid    a            owl:DatatypeProperty ;
+        rdfs:domain  :MSDataReq , :HRUpdateReq , :HRDataReq ;
+        rdfs:range   xsd:string .
+
+:postHRData  a           dta:Operation ;
+        dta:destination  "Queue1"^^xsd:string ;
+        dta:input        :HRUpdateReq ;
+        dta:kind         dta:Post .
+
+:bpm    a             owl:DatatypeProperty ;
+        rdfs:comment  "The bit per minute" ;
+        rdfs:domain   :HRData ;
+        rdfs:range    xsd:integer .
+
+:HRUpdateReq  a          owl:Class ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :sid
+                         ] ;
+        dta:restriction  [ a                owl:Restriction ;
+                           owl:cardinality  "1"^^xsd:int ;
+                           owl:onProperty   :hrData
+                         ] ;
+        dta:x            "335"^^xsd:int ;
+        dta:y            "15"^^xsd:int .
+
+:publishHRData  a    dta:Request ;
+        dta:expires  "10"^^xsd:int ;
+        dta:input    :HRUpdateReq ;
+        dta:kind     dta:Publish .
+
+:timestamp  a         owl:DatatypeProperty ;
+        rdfs:comment  "The timestamp" ;
+        rdfs:domain   :HRData ;
+        rdfs:range    xsd:string .
+
+:updateHRData  a   dta:Request ;
+        dta:input  :HRUpdateReq ;
+        dta:kind   dta:Post .

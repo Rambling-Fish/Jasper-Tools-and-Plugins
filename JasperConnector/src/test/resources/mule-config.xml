@@ -5,33 +5,62 @@
       xmlns:spring="http://www.springframework.org/schema/beans"
       xmlns:jasper="http://www.mulesoft.org/schema/mule/jasper"
       xmlns:jms="http://www.mulesoft.org/schema/mule/jms"
+      xmlns:json="http://www.mulesoft.org/schema/mule/json"
       xsi:schemaLocation="
         http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-current.xsd
         http://www.mulesoft.org/schema/mule/core http://www.mulesoft.org/schema/mule/core/current/mule.xsd
         http://www.mulesoft.org/schema/mule/jms http://www.mulesoft.org/schema/mule/jms/current/mule-jms.xsd
+		http://www.mulesoft.org/schema/mule/json http://www.mulesoft.org/schema/mule/json/current/mule-json.xsd
         http://www.mulesoft.org/schema/mule/jasper http://www.mulesoft.org/schema/mule/jasper/1.0/mule-jasper.xsd">
 
-    <jasper:config name="Jasper" vendor="jasper" application="jasperConnectorTestDTA" version="0.1" url="tcp://0.0.0.0:61616" />
+    <jasper:config name="Jasper" vendor="jasper" application="jasperConnectorTestDTA" version="0.1" url="tcp://0.0.0.0:61616" model="TestDTA.dta"/>
 	
 	<jms:activemq-connector name="Active_MQ" brokerURL="tcp://0.0.0.0:61616" validateConnections="true"/>
 
-    <flow name="testPublishToTopic">
-        <jasper:publish-to-topic config-ref="Jasper" topic="Topic1"/>
+    <flow name="testUpdateHRData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#updateHRData"/>
     </flow>
 
-    <flow name="testSendToQueueReceiveResponse">
-        <jasper:send-to-queue-receive-response config-ref="Jasper" />
+    <flow name="testRequestMSData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestMSData"/>
     </flow>
 
-    <flow name="testSubscribeToTopic">
-        <jasper:subscribe-to-topic config-ref="Jasper" topic="Topic2"/>
-        <jms:outbound-endpoint connector-ref="Active_MQ" queue="Queue2" />
+    <flow name="testRequestHRData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestHRData"/>
     </flow>
 
-    <flow name="testReceiveFromQueueSendResponse">
-        <jasper:receive-from-queue-send-response config-ref="Jasper" queue="Queue3" />
-		<append-string-transformer message=" is satisfied" />
-		<append-string-transformer message=" 100%" />
+    <flow name="testRequestBpm">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestBpm"/>
+        <catch-exception-strategy>
+            <component>
+                <singleton-object class="com.coralcea.jasper.connector.tests.StatusCodeReporter"/>
+            </component>
+        </catch-exception-strategy>
+    </flow>
+
+    <flow name="testPublishHRData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#publishHRData"/>
+    </flow>
+
+    <flow name="testPostHRData">
+        <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#postHRData"/>
+         <component>
+            <singleton-object class="com.coralcea.jasper.connector.tests.generated.PostHRData"/>
+        </component>
+    </flow>
+
+    <flow name="testGetHRData">
+        <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#getHRData"/>
+        <component>
+            <singleton-object class="com.coralcea.jasper.connector.tests.generated.GetHRData"/>
+        </component>
+    </flow>
+
+    <flow name="testGetBpm">
+        <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#getBpm"/>
+        <component>
+            <singleton-object class="com.coralcea.jasper.connector.tests.generated.GetBpm"/>
+        </component>
     </flow>
 
 </mule>
