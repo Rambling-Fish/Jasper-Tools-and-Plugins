@@ -8,6 +8,7 @@ import org.eclipse.ui.forms.widgets.Form;
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.Images;
 import com.coralcea.jasper.tools.dta.diagrams.DTABrowseDiagramFactory;
+import com.hp.hpl.jena.ontology.OntResource;
 
 public class DTABrowseDiagramViewer extends DTADiagramViewer {
 
@@ -27,6 +28,12 @@ public class DTABrowseDiagramViewer extends DTADiagramViewer {
 		super.activate();
 	}
 	
+	public void focusOn(OntResource resource) {
+		viewer.setProperty("filter", resource.toString());
+		getEditor().markLocation();
+		refresh();
+	}
+	
 	protected void setupActions(IToolBarManager manager) {
 		super.setupActions(manager);
 
@@ -36,30 +43,35 @@ public class DTABrowseDiagramViewer extends DTADiagramViewer {
 		action.addSubAction(new Action("All") { 
 			public void run() {
 				viewer.setProperty("filter", null);
+				getEditor().markLocation();
 				refresh();
 			}
 		});
 		action.addSubAction(new Action("Types") { 
 			public void run() {
 				viewer.setProperty("filter", "Types");
+				getEditor().markLocation();
 				refresh();
 			}
 		});
 		action.addSubAction(new Action("Properties") { 
 			public void run() {
 				viewer.setProperty("filter", "Properties");
+				getEditor().markLocation();
 				refresh();
 			}
 		});
 		action.addSubAction(new Action("Associations") { 
 			public void run() {
 				viewer.setProperty("filter", "Associations");
+				getEditor().markLocation();
 				refresh();
 			}
 		});
 		action.addSubAction(new Action("Operations") { 
 			public void run() {
 				viewer.setProperty("filter", "Operations");
+				getEditor().markLocation();
 				refresh();
 			}
 		});
@@ -72,4 +84,12 @@ public class DTABrowseDiagramViewer extends DTADiagramViewer {
 		viewer.setEditPartFactory(new DTABrowseDiagramFactory());
 	}
 	
+	public String getInternalState() {
+		return (String) viewer.getProperty("filter");
+	}
+	
+	public void setInternalState(String state) {
+		viewer.setProperty("filter", state);
+		refresh();
+	}
 }

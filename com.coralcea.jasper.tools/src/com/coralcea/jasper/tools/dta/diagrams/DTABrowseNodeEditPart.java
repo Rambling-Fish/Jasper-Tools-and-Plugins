@@ -5,12 +5,12 @@ import java.util.Iterator;
 import java.util.List;
 
 import org.eclipse.gef.DragTracker;
-import org.eclipse.gef.EditPartViewer;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.tools.DragEditPartsTracker;
 
-import com.coralcea.jasper.tools.dta.editors.DTADiagramViewer;
+import com.coralcea.jasper.tools.dta.editors.DTABrowseDiagramViewer;
+import com.coralcea.jasper.tools.dta.editors.DTADiagramViewer.DTAEditingDomain;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.rdf.model.Statement;
 
@@ -57,10 +57,9 @@ public abstract class DTABrowseNodeEditPart extends DTAResourceNodeEditPart {
 			}
 			protected boolean handleDoubleClick(int button) {
 				if (getCurrentInput().isControlKeyDown()) {
-					EditPartViewer viewer = getSourceEditPart().getViewer();
-					viewer.setProperty("filter", "Element");
-					viewer.setProperty("element", getSourceEditPart().getModel());
-					((DTADiagramViewer)viewer.getProperty("DiagramViewer")).refresh();
+					DTAEditingDomain domain = (DTAEditingDomain) getSourceEditPart().getViewer().getEditDomain();
+					DTABrowseDiagramViewer browseViewer = (DTABrowseDiagramViewer) domain.getDiagramViewer();
+					browseViewer.focusOn(((DTABrowseNodeEditPart) getSourceEditPart()).getOntResource());
 					return true;
 				}
 				return super.handleDoubleClick(button);

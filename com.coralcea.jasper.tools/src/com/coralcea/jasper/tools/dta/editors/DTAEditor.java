@@ -302,6 +302,19 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		return null;
 	}
 	
+	public String getInternalState() {
+		if (getActivePage() != -1) {
+			return getViewer(getActivePage()).getInternalState();
+		}
+		return null;
+	}
+	
+	public void setInternalState(String state) {
+		if (getActivePage() != -1) {
+			getViewer(getActivePage()).setInternalState(state);
+		}
+	}
+
 	void markLocation() {
 		getSite().getPage().getNavigationHistory().markLocation(this);
 	}
@@ -493,5 +506,5 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	private void closeEditor(boolean save) {
 		getSite().getPage().closeEditor(DTAEditor.this, save);
 	}
-
+	
 }

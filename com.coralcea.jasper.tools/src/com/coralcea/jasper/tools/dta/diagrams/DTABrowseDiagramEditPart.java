@@ -114,8 +114,8 @@ public class DTABrowseDiagramEditPart extends DTAResourceNodeEditPart  {
 				continue;
 			if ("Operations".equals(filter) && !DTA.operation.equals(s.getPredicate()) && !DTA.request.equals(s.getPredicate()) && !DTA.input.equals(s.getPredicate()) && !DTA.output.equals(s.getPredicate()))
 				continue;
-			if ("Element".equals(filter)) {
-				Object element = getViewer().getProperty("element");
+			if (model.getOntResource(filter) != null) {
+				Object element = model.getOntResource(filter);
 				if (!subject.equals(element) && !object.equals(element))
 					continue;
 			}
@@ -132,8 +132,8 @@ public class DTABrowseDiagramEditPart extends DTAResourceNodeEditPart  {
 				if (DTAUtilities.isTypedBy(subject, new Resource[] {OWL.Class, OWL.ObjectProperty, OWL.DatatypeProperty, DTA.DTA, DTA.Operation, DTA.Request}))
 					relevantChildren.add(subject);
 			}
-		} else if ("Element".equals(filter))
-			relevantChildren.add((OntResource)getViewer().getProperty("element"));
+		} else if (model.getOntResource(filter) != null)
+			relevantChildren.add(model.getOntResource(filter));
 		
 		modelChildren = new ArrayList<OntResource>(relevantChildren);
 	}

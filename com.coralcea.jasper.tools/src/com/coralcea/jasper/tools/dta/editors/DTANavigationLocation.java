@@ -9,6 +9,7 @@ public class DTANavigationLocation extends NavigationLocation {
 
 	private int page = -1;
 	private String element;
+	private String state;
 	
 	protected DTANavigationLocation(IEditorPart editorPart, boolean initialize) {
 		super(editorPart);
@@ -21,6 +22,8 @@ public class DTANavigationLocation extends NavigationLocation {
 		memento.putInteger("Page", page);
 		if (element != null)
 			memento.putString("Element", element);
+		if (state != null)
+			memento.putString("State", state);
 	}
 
 	@Override
@@ -28,6 +31,7 @@ public class DTANavigationLocation extends NavigationLocation {
 		if (getEditorPart() instanceof DTAEditor) {
 			page = memento.getInteger("Page");
 			element = memento.getString("Element");
+			state = memento.getString("State");
 		}
 	}
 
@@ -39,6 +43,7 @@ public class DTANavigationLocation extends NavigationLocation {
 				editor.setActivePage(page);
 			if (element != null)
 				editor.setSelectedElement(editor.getModel().getOntResource(element));
+			editor.setInternalState(state);
 		}
 	}
 
@@ -49,8 +54,11 @@ public class DTANavigationLocation extends NavigationLocation {
 			if (current.page == -1) {
 				current.page = page;
 				current.element = element;
+				current.state = state;
 				return true;
-			} else if (page == current.page && ((element == null) || element.equals(current.element)))
+			} else if (page == current.page && 
+					   ((element == null && current.element==null) || (element != null && element.equals(current.element))) &&
+					   ((state == null) || state.equals(current.state)) || (state != null && state.equals(current.state)))
 				return true;
 		}
 		return false;
@@ -63,6 +71,7 @@ public class DTANavigationLocation extends NavigationLocation {
 			page = editor.getActivePage();
 			if (editor.getSelectedElement() != null)
 				element = editor.getSelectedElement().getURI();
+			state = editor.getInternalState();
 		}
 	}
 }

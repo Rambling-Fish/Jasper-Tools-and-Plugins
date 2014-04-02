@@ -40,6 +40,7 @@ import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.FillLayout;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Display;
+import org.eclipse.ui.IEditorPart;
 import org.eclipse.ui.progress.UIJob;
 
 import com.coralcea.jasper.tools.Activator;
@@ -179,7 +180,7 @@ public class DTADiagramViewer extends DTAViewer {
 	}
 
 	protected void createGraphicalViewer(Composite parent) {
-		DefaultEditDomain editDomain = new DefaultEditDomain(getEditor());
+		DTAEditingDomain editDomain = new DTAEditingDomain(getEditor());
 		editDomain.setCommandStack(getEditor().getCommandStack());
 
 		parent.setLayout(new FillLayout());
@@ -191,7 +192,6 @@ public class DTADiagramViewer extends DTAViewer {
 		viewer.setEditDomain(editDomain);
 		viewer.addSelectionChangedListener(listener);
 		viewer.setProperty("LabelProvider", new DTALabelProvider());
-		viewer.setProperty("DiagramViewer", this);
 		viewer.setProperty(RulerProvider.PROPERTY_VERTICAL_RULER, null);
 		viewer.setProperty(RulerProvider.PROPERTY_HORIZONTAL_RULER, null);
 		viewer.setProperty(RulerProvider.PROPERTY_RULER_VISIBILITY, false);
@@ -201,4 +201,14 @@ public class DTADiagramViewer extends DTAViewer {
 		viewer.setProperty(MouseWheelHandler.KeyGenerator.getKey(SWT.MOD1), MouseWheelZoomHandler.SINGLETON);
 	}
 	
+	public class DTAEditingDomain extends DefaultEditDomain {
+
+		public DTAEditingDomain(IEditorPart editorPart) {
+			super(editorPart);
+		}
+		
+		public DTADiagramViewer getDiagramViewer() {
+			return DTADiagramViewer.this;
+		}
+	}
 }

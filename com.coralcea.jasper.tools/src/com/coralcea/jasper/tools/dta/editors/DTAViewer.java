@@ -156,6 +156,13 @@ public abstract class DTAViewer extends Viewer {
 		setSelection(new StructuredSelection(model));
 	}
 
+	public String getInternalState() {
+		return null;
+	}
+	
+	public void setInternalState(String state) {
+	}
+
 	@Override
 	public abstract void refresh();
 
