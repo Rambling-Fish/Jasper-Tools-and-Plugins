@@ -35,7 +35,7 @@ public class DTAPropertyEditPart2 extends DTABrowseNodeEditPart {
 		Rectangle r = new Rectangle(0, 0, -1, -1);
 		((GraphicalEditPart) getParent()).setLayoutConstraint(this, getFigure(), r);
 
-		Label label = (Label)getFigure();
+		DTANodeLabel label = (DTANodeLabel)getFigure();
 		label.setText(DTAUtilities.getLabel(getOntProperty()));
 		label.setToolTip(new Label(getOntProperty().getURI()));
 		label.setIcon(getLabelProvider().getImage(getOntProperty()));

@@ -11,25 +11,37 @@
 package com.coralcea.jasper.tools.dta.diagrams;
 
 import org.eclipse.draw2d.ChopboxAnchor;
+import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.ConnectionAnchor;
+import org.eclipse.draw2d.Figure;
+import org.eclipse.draw2d.FlowLayout;
 import org.eclipse.draw2d.Label;
-import org.eclipse.draw2d.PositionConstants;
 import org.eclipse.draw2d.geometry.Point;
-import org.eclipse.draw2d.geometry.Rectangle;
+import org.eclipse.swt.graphics.Image;
 
-public class DTANodeLabel extends Label implements DTANode {
+public class DTANodeLabel extends Figure implements DTANode {
 
 	protected ChopboxAnchor anchor;
+	protected Label icon;
+	protected Label text;
 
 	public DTANodeLabel() {
-		setLabelAlignment(PositionConstants.CENTER);
-		anchor = new ChopboxAnchor(this) {
-			protected Rectangle getBox() {
-				return getIconBounds();
-			}
-		};
+		setLayoutManager(new FlowLayout(true));
+		add(icon = new Label());
+		add(text = new Label());
+		text.setBackgroundColor(ColorConstants.menuBackgroundSelected);
+		text.setOpaque(true);
+		anchor = new ChopboxAnchor(this);
+	}
+
+	public void setIcon(Image image) {
+		icon.setIcon(image);
 	}
 	
+	public void setText(String s) {
+		text.setText(s);
+	}
+
 	public ConnectionAnchor getConnectionAnchor(String terminal) {
 		return anchor;
 	}

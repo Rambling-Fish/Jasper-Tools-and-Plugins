@@ -33,7 +33,7 @@ public class DTAClassEditPart2 extends DTABrowseNodeEditPart {
 		Rectangle r = new Rectangle(0, 0, -1, -1);
 		((GraphicalEditPart) getParent()).setLayoutConstraint(this, getFigure(), r);
 
-		Label label = (Label)getFigure();
+		DTANodeLabel label = (DTANodeLabel)getFigure();
 		label.setText(getLabelProvider().getText(getOntClass()));
 		label.setToolTip(new Label(getOntClass().getURI()));
 		label.setIcon(getLabelProvider().getImage(getOntClass()));
