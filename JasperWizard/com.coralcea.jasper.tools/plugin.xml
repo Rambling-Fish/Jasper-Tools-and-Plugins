@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?eclipse version="3.4"?>
+<plugin>
+   <extension
+         point="org.eclipse.ui.newWizards">
+      <category
+            id="com.coralcea.jasper.wizards"
+            name="Jasper">
+      </category>
+      <wizard
+            id="com.coralcea.jasper.wizards.DTAModel"
+            name="DTA Model"
+            category="com.coralcea.jasper.wizards"
+            class="com.coralcea.jasper.tools.dta.wizards.DTAModelWizard"
+            icon="icons/file.gif">
+      </wizard>   
+      <wizard
+            id="com.coralcea.jasper.wizards.DTALibrary"
+            name="DTA Library"
+            category="com.coralcea.jasper.wizards"
+            class="com.coralcea.jasper.tools.dta.wizards.DTALibraryWizard"
+            icon="icons/file.gif">
+      </wizard>   
+   </extension>
+   <extension
+         point="org.eclipse.ui.importWizards">
+       <category
+            id="com.coralcea.jasper.wizards"
+            name="Jasper">
+      </category>
+      <wizard
+            id="com.coralcea.jasper.wizards.DTALibrary"
+            name="DTA Library From OWL/RDFS"
+            category="com.coralcea.jasper.wizards"
+            class="com.coralcea.jasper.tools.dta.wizards.DTAImportOwlWizard"
+            icon="icons/file.gif">
+      </wizard>   
+   </extension>
+   <extension
+         point="org.eclipse.ui.editors">
+      <editor
+            name="DTA Editor"
+            extensions="dta"
+            icon="icons/file.gif"
+            contributorClass="com.coralcea.jasper.tools.dta.editors.DTAEditorContributor"
+            class="com.coralcea.jasper.tools.dta.editors.DTAEditor"
+            id="com.coralcea.jasper.editors.DTA">
+      </editor>
+   </extension>
+   <extension
+         point="org.eclipse.ui.navigator.viewer">
+      <viewerContentBinding
+            viewerId="org.eclipse.ui.navigator.ProjectExplorer">
+         <includes>
+            <contentExtension pattern="com.coralcea.jasper.contents.DTA" />
+            <contentExtension pattern="com.coralcea.jasper.linkhelpers.DTA" />
+         </includes>
+      </viewerContentBinding>
+   </extension>
+   <extension
+         point="org.eclipse.ui.navigator.navigatorContent">
+      <navigatorContent
+            id="com.coralcea.jasper.contents.DTA"
+            name="DTA Contents"
+            contentProvider="com.coralcea.jasper.tools.dta.views.DTATreeContentProvider"
+            labelProvider="com.coralcea.jasper.tools.dta.views.DTATreeLabelProvider"
+            activeByDefault="true"
+            icon="icons/file.gif"
+            priority="normal">
+         <triggerPoints>
+            <or>
+               <and>
+                  <instanceof value="org.eclipse.core.resources.IFile" />
+                  <test
+                        forcePluginActivation="true"
+                        property="org.eclipse.core.resources.extension"
+                        value="dta">
+                  </test>
+               </and>
+               <instanceof value="com.coralcea.jasper.tools.dta.views.DTATreeData" />
+            </or>
+         </triggerPoints>
+         <possibleChildren>
+            <or>
+               <instanceof value="com.coralcea.jasper.tools.dta.views.DTATreeData" />
+            </or>
+         </possibleChildren>
+         <commonSorter
+               class="com.coralcea.jasper.tools.dta.views.DTATreeContentSorter"
+               id="com.coralcea.jasper.sorters.DTA">
+            <parentExpression>
+	             <or>
+	               <and>
+	                  <instanceof value="org.eclipse.core.resources.IFile" />
+	                  <test
+	                        forcePluginActivation="true"
+	                        property="org.eclipse.core.resources.extension"
+	                        value="dta">
+	                  </test>
+	               </and>
+                   <instanceof value="com.coralcea.jasper.tools.dta.views.DTATreeData" />
+	            </or>
+            </parentExpression>
+         </commonSorter>
+         <actionProvider
+               class="com.coralcea.jasper.tools.dta.views.DTAActionProvider"
+               id="com.coralcea.jasper.actions.DTA">
+         </actionProvider>
+      </navigatorContent>
+   </extension>
+   <extension
+         point="org.eclipse.ui.navigator.linkHelper">
+      <linkHelper
+            class="com.coralcea.jasper.tools.dta.editors.DTALinkHelper"
+            id="com.coralcea.jasper.linkhelpers.DTA">
+		 <editorInputEnablement>
+		     <or> 
+		     	<instanceof value="org.eclipse.ui.IFileEditorInput" />
+		     </or>
+		 </editorInputEnablement>
+         <selectionEnablement>
+         	<or>
+				<instanceof value="com.coralcea.jasper.tools.dta.views.DTATreeData" />
+			</or>
+         </selectionEnablement>
+      </linkHelper>
+   </extension>
+   <extension 
+   		point="org.eclipse.core.resources.markers" id="com.coralcea.jasper.markers.DTA" name="DTA Problem"> 
+      <persistent value="true"/> 
+      <super type="org.eclipse.core.resources.problemmarker"/> 
+   </extension>
+</plugin>
