@@ -16,7 +16,6 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.ui.forms,
  org.eclipse.gef,
  org.eclipse.help,
- org.eclipse.jdt.core,
- org.eclipse.jdt.ui
+ org.eclipse.jdt.core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
