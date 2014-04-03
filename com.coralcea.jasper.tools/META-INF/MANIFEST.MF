@@ -19,3 +19,4 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
+Bundle-ClassPath: .
