@@ -2,13 +2,20 @@ package com.coralcea.jasper.tools.dta.diagrams;
 
 import org.eclipse.draw2d.ArrowLocator;
 import org.eclipse.draw2d.ColorConstants;
+import org.eclipse.draw2d.Connection;
 import org.eclipse.draw2d.ConnectionLocator;
+import org.eclipse.draw2d.Figure;
+import org.eclipse.draw2d.Graphics;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
+import org.eclipse.draw2d.LineBorder;
 import org.eclipse.draw2d.PolygonDecoration;
 import org.eclipse.draw2d.PolylineConnection;
 import org.eclipse.draw2d.RotatableDecoration;
+import org.eclipse.draw2d.geometry.Dimension;
+import org.eclipse.draw2d.geometry.Point;
 import org.eclipse.draw2d.geometry.PointList;
+import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.DragTracker;
 import org.eclipse.gef.EditPolicy;
 import org.eclipse.gef.GraphicalEditPart;
@@ -45,6 +52,27 @@ public class DTAStatementEditPart extends DTAConnectionEditPart {
 				RotatableDecoration arrow = (RotatableDecoration) target;
 				arrow.setLocation(getLocation(points));
 				arrow.setReferencePoint(points.getPoint(0));
+			}
+		});
+		
+		final Label label = new Label();
+		label.setText(getLabelText());
+		polyline.add(label, new ConnectionLocator(polyline) {
+			protected Point getReferencePoint() {
+				Connection conn = getConnection();
+				Point p = Point.SINGLETON;
+				Point p1 = conn.getPoints().getPoint(conn.getPoints().size()-2);
+				Point p2 = conn.getPoints().getPoint(conn.getPoints().size()-1);
+				conn.translateToAbsolute(p1);
+				conn.translateToAbsolute(p2);
+				double f = (conn.getPoints().size()==2) ? 1/2. : 0;
+				int width = label.getBounds().width;
+				int height = label.getBounds().height;
+				Dimension d = p2.getDifference(p1);
+				double angle = Math.atan2(d.height, d.width);
+				p.x = (int)(p1.x + (p2.x - p1.x) * f - (width/2+10)*Math.sin(angle));
+				p.y = (int)(p1.y + (p2.y - p1.y) * f + (height/2+10)*Math.cos(angle));
+				return p;
 			}
 		});
 		

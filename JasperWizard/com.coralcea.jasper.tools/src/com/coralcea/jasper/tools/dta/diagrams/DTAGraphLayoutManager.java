@@ -22,7 +22,6 @@ public class DTAGraphLayoutManager {
 
 	@SuppressWarnings("unchecked")
 	private static Map<GraphicalEditPart, Node> applyLayout(GraphicalEditPart container) {
-		DirectedGraph graph = new DirectedGraph();
 		Map<GraphicalEditPart, Node> nodeMap = new HashMap<GraphicalEditPart, Node>();
 		Map<ConnectionEditPart, Edge> edgeMap = new HashMap<ConnectionEditPart, Edge>();
 		
@@ -35,11 +34,10 @@ public class DTAGraphLayoutManager {
 			node.y = bounds.y;
 			node.width = bounds.width;
 			node.height = bounds.height;
-			node.setPadding(new Insets(15, 15, 30, 15));
+			node.setPadding(new Insets(30, 30, 30, 30));
 			
 			nodeMap.put(editpart, node);
 		}
-		graph.nodes.addAll(nodeMap.values());
 
 		for(Object e : container.getChildren()) {
 			GraphicalEditPart editpart = (GraphicalEditPart)e;
@@ -56,8 +54,11 @@ public class DTAGraphLayoutManager {
 				}
 			}
 		}
-		graph.edges.addAll(edgeMap.values());
 		
+		DirectedGraph graph = new DirectedGraph();
+		graph.edges.addAll(edgeMap.values());
+		graph.nodes.addAll(nodeMap.values());
+
 		DirectedGraphLayout layout = new DirectedGraphLayout();
 		layout.visit(graph);
 		
