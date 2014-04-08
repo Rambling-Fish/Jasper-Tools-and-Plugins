@@ -21,7 +21,7 @@ import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntResource;
 
-public class DTADTAEditPart extends DTAResourceNodeEditPart {
+public class DTADTAEditPart extends DTAUMLNodeEditPart {
 	
 	public DTADTAEditPart(OntResource resource) {
 		super(resource);
@@ -65,9 +65,7 @@ public class DTADTAEditPart extends DTAResourceNodeEditPart {
 	
 	@Override
 	protected void refreshVisuals() {
-		int x = DTAUtilities.getIntegerValue(getDTA(), DTA.x);
-		int y = DTAUtilities.getIntegerValue(getDTA(), DTA.y);
-		Rectangle r = new Rectangle(x, y, -1, -1);
+		Rectangle r = new Rectangle(0, 0, -1, -1);
 		((GraphicalEditPart) getParent()).setLayoutConstraint(this, getFigure(), r);
 
 		Label label = (Label)getFigure().getChildren().get(0);

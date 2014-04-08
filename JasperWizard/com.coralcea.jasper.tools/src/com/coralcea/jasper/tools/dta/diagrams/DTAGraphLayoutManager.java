@@ -11,12 +11,6 @@ import org.eclipse.draw2d.graph.Edge;
 import org.eclipse.draw2d.graph.Node;
 import org.eclipse.gef.ConnectionEditPart;
 import org.eclipse.gef.GraphicalEditPart;
-import org.eclipse.gef.commands.Command;
-import org.eclipse.gef.commands.CompoundCommand;
-
-import com.coralcea.jasper.tools.dta.DTA;
-import com.coralcea.jasper.tools.dta.commands.SetPropertyCommand;
-import com.hp.hpl.jena.ontology.OntResource;
 
 public class DTAGraphLayoutManager {
 
@@ -65,16 +59,6 @@ public class DTAGraphLayoutManager {
 		return nodeMap;
 	}
 	
-	public static Command getLayoutCommand(GraphicalEditPart container) {
-		CompoundCommand cc = new CompoundCommand("Arrange Diagram");
-		for(Node node : applyLayout(container).values()) {
-			OntResource r = (OntResource) node.data;
-			cc.add(new SetPropertyCommand(r, DTA.x, r.getModel().createTypedLiteral(node.x)));
-			cc.add(new SetPropertyCommand(r, DTA.y, r.getModel().createTypedLiteral(node.y)));
-		}
-		return cc;
-	}
-
 	public static void layout(GraphicalEditPart container) {
 		for(Map.Entry<GraphicalEditPart, Node> e : applyLayout(container).entrySet()) {
 			Rectangle rect = new Rectangle(e.getValue().x, e.getValue().y, -1, -1);

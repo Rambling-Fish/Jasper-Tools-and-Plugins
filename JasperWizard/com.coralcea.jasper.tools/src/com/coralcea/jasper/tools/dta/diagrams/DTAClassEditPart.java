@@ -17,8 +17,6 @@ import org.eclipse.draw2d.geometry.Dimension;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.GraphicalEditPart;
 
-import com.coralcea.jasper.tools.dta.DTA;
-import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntProperty;
@@ -28,7 +26,7 @@ import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
 import com.hp.hpl.jena.vocabulary.RDFS;
 
-public class DTAClassEditPart extends DTAResourceNodeEditPart {
+public class DTAClassEditPart extends DTAUMLNodeEditPart {
 	
 	public DTAClassEditPart(OntClass aClass) {
 		super(aClass);
@@ -74,9 +72,7 @@ public class DTAClassEditPart extends DTAResourceNodeEditPart {
 	
 	@Override
 	protected void refreshVisuals() {
-		int x = DTAUtilities.getIntegerValue(getOntClass(), DTA.x);
-		int y = DTAUtilities.getIntegerValue(getOntClass(), DTA.y);
-		Rectangle r = new Rectangle(x, y, -1, -1);
+		Rectangle r = new Rectangle(0, 0, -1, -1);
 		((GraphicalEditPart) getParent()).setLayoutConstraint(this, getFigure(), r);
 
 		Label label = (Label)getFigure().getChildren().get(0);

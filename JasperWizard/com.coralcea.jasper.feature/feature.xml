@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <feature
       id="com.coralcea.jasper.feature"
-      label="Jasper Tools"
+      label="Jasper Wizard"
       version="1.0.0.qualifier"
       provider-name="CORALCEA">
 

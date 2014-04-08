@@ -13,14 +13,13 @@ import org.eclipse.draw2d.FreeformLayer;
 import org.eclipse.draw2d.FreeformLayout;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.MarginBorder;
-import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.DragTracker;
 import org.eclipse.gef.EditPart;
 import org.eclipse.gef.EditPolicy;
+import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.LayerConstants;
 import org.eclipse.gef.Request;
 import org.eclipse.gef.commands.Command;
-import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.gef.editpolicies.NonResizableEditPolicy;
 import org.eclipse.gef.editpolicies.XYLayoutEditPolicy;
 import org.eclipse.gef.requests.ChangeBoundsRequest;
@@ -32,7 +31,7 @@ import org.eclipse.swt.SWT;
 
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
-import com.coralcea.jasper.tools.dta.commands.SetPropertyCommand;
+import com.coralcea.jasper.tools.dta.commands.TransientSetLayoutConstraintCommand;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.ontology.Ontology;
@@ -71,6 +70,13 @@ public class DTAUMLDiagramEditPart extends DTAResourceNodeEditPart {
 				&& ((SelectionRequest) req).getLastButtonPressed() == 3)
 			return new DeselectAllTracker(this);
 		return new MarqueeDragTracker();
+	}
+
+	@Override
+	public void addNotify() {
+		super.addNotify();
+		getFigure().validate();
+		DTAGraphLayoutManager.layout(this);
 	}
 
 	@Override
@@ -157,12 +163,7 @@ public class DTAUMLDiagramEditPart extends DTAResourceNodeEditPart {
 			return new NonResizableEditPolicy();
 		}
 		protected Command createChangeConstraintCommand(ChangeBoundsRequest request, EditPart child, Object constraint) {
-			OntResource resource = ((DTAResourceNodeEditPart) child).getOntResource();
-			Rectangle rect = (Rectangle) constraint;
-			CompoundCommand cc = new CompoundCommand("Change Position");
-			cc.add(new SetPropertyCommand(resource, DTA.x, resource.getModel().createTypedLiteral(rect.x)));
-			cc.add(new SetPropertyCommand(resource, DTA.y, resource.getModel().createTypedLiteral(rect.y)));
-			return cc;
+			return new TransientSetLayoutConstraintCommand((GraphicalEditPart)getHost(), (GraphicalEditPart)child, constraint);
 		}
 	}
 }

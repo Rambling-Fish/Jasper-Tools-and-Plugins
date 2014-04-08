@@ -13,6 +13,7 @@ import org.eclipse.draw2d.SWTGraphics;
 import org.eclipse.draw2d.geometry.Rectangle;
 import org.eclipse.gef.DefaultEditDomain;
 import org.eclipse.gef.EditPart;
+import org.eclipse.gef.GraphicalEditPart;
 import org.eclipse.gef.GraphicalViewer;
 import org.eclipse.gef.LayerConstants;
 import org.eclipse.gef.MouseWheelHandler;
@@ -47,6 +48,7 @@ import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.Images;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTALabelProvider;
+import com.coralcea.jasper.tools.dta.diagrams.DTAGraphLayoutManager;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.rdf.model.Resource;
 
@@ -114,6 +116,15 @@ public class DTADiagramViewer extends DTAViewer {
 		manager.appendToGroup("Viewer", action);
 		
 		action = new ZoomOutAction(root.getZoomManager());
+		manager.appendToGroup("Viewer", action);
+
+		action = new Action("Arrange diagram") { //$NON-NLS-1$
+			public void run() {
+				DTAGraphLayoutManager.layout((GraphicalEditPart)viewer.getContents());
+			}
+		};
+		action.setToolTipText("Arrange diagram");
+		action.setImageDescriptor(Activator.getImageDescriptor(Images.LAYOUT));
 		manager.appendToGroup("Viewer", action);
 
 	}

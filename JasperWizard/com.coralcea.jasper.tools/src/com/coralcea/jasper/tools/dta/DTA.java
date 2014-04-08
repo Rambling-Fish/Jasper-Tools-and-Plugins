@@ -40,9 +40,6 @@ public class DTA {
 	public static final Property inputRestriction = property("inputRestriction");
 	public static final Property outputRestriction = property("outputRestriction");
 
-	public static final Property x = property("x");
-	public static final Property y = property("y");
-
     private static final Resource resource( String local ){ 
     	return ResourceFactory.createResource( URI + local ); 
     }
