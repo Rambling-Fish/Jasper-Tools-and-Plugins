@@ -57,7 +57,7 @@ public class DTALabelProvider extends LabelProvider {
 
 			String inputs = (input!=null) ? " ("+DTAUtilities.getLabel(input)+")" : " ()"; 
 			String outputs = (outputType!=null) ? " : "+DTAUtilities.getLabel(outputType) : "";
-			String cardinality = (output!=null) ? " ["+DTAUtilities.getCardinality(restriction)+"]" : "";
+			String cardinality = (output!=null) ? " "+DTAUtilities.getCardinality(restriction) : "";
 			
 			text += inputs+outputs+cardinality;
 		}

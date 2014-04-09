@@ -429,39 +429,40 @@ public class DTAUtilities {
 		}
 		return null;
     }
-    
-    public static Restriction getRestriction(OntClass resource, Property kind, Property property) {
-		Restriction r = getDirectRestriction(resource, kind, property);
-		if (r==null) {
-			for (OntClass superClass : DTAUtilities.listObjects(resource, RDFS.subClassOf, OntClass.class)) {
-				r = getRestriction(superClass, kind, property);
-				if (r!=null)
-					break;
-			}
+ 
+    public static Restriction getIndirectRestriction(Resource resource, Property kind, Property property) {
+    	Restriction r = null;
+    	for (OntClass superClass : DTAUtilities.listObjects(resource, RDFS.subClassOf, OntClass.class)) {
+			r = getRestriction(superClass, kind, property);
+			if (r!=null)
+				break;
 		}
     	return r;
     }
 
+    public static Restriction getRestriction(Resource resource, Property kind, Property property) {
+		Restriction r = getDirectRestriction(resource, kind, property);
+		if (r==null)
+			r = getIndirectRestriction(resource, kind, property);
+    	return r;
+    }
+
     public static String getCardinality(Restriction restriction) {
-	    String value = "1..1";
-	    if (restriction == null)
-	    	value = "0..*";
+    	if (restriction == null)
+    		return Cardinality.ZERO_STAR;
+	    if (restriction.isCardinalityRestriction())
+	    	return Cardinality.ONE_ONE;
 	    else if (restriction.isMaxCardinalityRestriction())
-	    	value = "0..1";
+	    	return Cardinality.ZERO_ONE;
 	    else if (restriction.isMinCardinalityRestriction())
-	    	value = "1..*";
-    	return value;
+	    	return Cardinality.ONE_STAR;
+	    return null;
     }
     
     public static Resource getRestrictedType(Restriction restriction) {
     	if (restriction!=null && restriction.isAllValuesFromRestriction())
     		return restriction.asAllValuesFromRestriction().getAllValuesFrom();
     	return null;
-    }
-
-    public static boolean isMultiValued(Resource aClass, Property aProperty, Property kind) {
-    	Restriction restriction = getDirectRestriction(aClass, kind, aProperty);
-    	return restriction==null || restriction.isMinCardinalityRestriction();
     }
 
     public static boolean isGet(Resource operation) {

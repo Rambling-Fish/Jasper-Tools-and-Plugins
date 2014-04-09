@@ -19,9 +19,14 @@ import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.statushandlers.StatusManager;
 
 import com.coralcea.jasper.tools.Activator;
+import com.hp.hpl.jena.ontology.CardinalityRestriction;
+import com.hp.hpl.jena.ontology.MaxCardinalityRestriction;
+import com.hp.hpl.jena.ontology.MinCardinalityRestriction;
 import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntProperty;
+import com.hp.hpl.jena.ontology.Restriction;
+import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.OWL;
 import com.hp.hpl.jena.vocabulary.RDFS;
@@ -105,8 +110,19 @@ public class DTAModelValidator {
 			log(file, request, "does not have an output property", IMarker.SEVERITY_ERROR);
 	}	
 
-	private void validateType(IFile file, Resource type) {
-        // no type validation rules yet
+	private void validateType(IFile file, Resource type) throws CoreException {
+		for(Property property : DTAUtilities.listDeclaredProperties(type)) {
+			Restriction direct = DTAUtilities.getDirectRestriction(type, DTA.restriction, property);
+			if (direct != null) {
+				Restriction indirect = DTAUtilities.getIndirectRestriction(type, DTA.restriction, property);
+				if (indirect != null) {
+					if ((indirect.canAs(MaxCardinalityRestriction.class) && direct.canAs(MinCardinalityRestriction.class)) ||
+						(indirect.canAs(MinCardinalityRestriction.class) && direct.canAs(MaxCardinalityRestriction.class)) ||
+						(indirect.canAs(CardinalityRestriction.class) && !direct.canAs(CardinalityRestriction.class)))
+						log(file, type, "has a more relaxed cardinality on property <"+property+"> than in super types", IMarker.SEVERITY_ERROR);
+				}
+			}
+		}
 	}
 
 	private void validateProperty(IFile file, Resource property) throws CoreException {

@@ -50,6 +50,7 @@ import org.eclipse.ui.forms.widgets.Section;
 
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.Images;
+import com.coralcea.jasper.tools.dta.Cardinality;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.AddPropertyCommand;
@@ -531,7 +532,7 @@ public class DTAPropertiesViewer extends DTAViewer {
         	Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.outputRestriction, output);
         	initialValue = DTAUtilities.getCardinality(initial);
         }
-        ComboViewer combo = createCombo(linkGroup, SWT.DROP_DOWN|SWT.READ_ONLY, null, new String[]{"0..*", "0..1", "1..*", "1..1"}, initialValue);
+        ComboViewer combo = createCombo(linkGroup, SWT.READ_ONLY, null, Cardinality.toArray(), initialValue);
 		combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element) && output!=null);
 		combo.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -893,7 +894,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 			
 			Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.restriction, i);
 		    String initialValue = DTAUtilities.getCardinality(initial);
-			ComboViewer combo = createCombo(group, SWT.DROP_DOWN|SWT.READ_ONLY, null, new String[]{"0..*", "0..1", "1..*", "1..1"}, initialValue);
+			ComboViewer combo = createCombo(group, SWT.READ_ONLY, null, Cardinality.toArray(), initialValue);
 			combo.getControl().setLayoutData(new GridData());
 			combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element));
 			combo.addSelectionChangedListener(new ISelectionChangedListener() {
@@ -908,7 +909,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 				createRemoveButton(group, i, new HyperlinkAdapter() {
 					public void linkActivated(HyperlinkEvent e) {
 						CompoundCommand cc = new CompoundCommand("Removing Property from Type");
-						cc.add(new ChangeCardinalityCommand(element, DTA.restriction, i, "0..*"));
+						cc.add(new ChangeCardinalityCommand(element, DTA.restriction, i, ""));
 						cc.add(new RemovePropertyCommand(i, RDFS.domain, element));
 						getEditor().executeCommand(cc, true);
 					}

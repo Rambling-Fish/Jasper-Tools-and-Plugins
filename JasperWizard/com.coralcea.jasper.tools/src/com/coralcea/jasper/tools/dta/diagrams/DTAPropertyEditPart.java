@@ -39,7 +39,7 @@ public class DTAPropertyEditPart extends DTAResourceNodeEditPart {
 
 		OntClass aClass = ((DTAClassEditPart)getParent()).getOntClass();
 		Restriction initial = DTAUtilities.getDirectRestriction(aClass, DTA.restriction, getOntProperty());
-	    String initialValue = " ["+DTAUtilities.getCardinality(initial)+"]";
+	    String initialValue = " "+DTAUtilities.getCardinality(initial);
 
 		Label label = (Label)getFigure();
 		label.setText(getLabelProvider().getText(getOntProperty())+initialValue);

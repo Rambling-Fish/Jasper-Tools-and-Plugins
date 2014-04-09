@@ -55,6 +55,7 @@ import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntProperty;
 import com.hp.hpl.jena.ontology.Ontology;
+import com.hp.hpl.jena.ontology.Restriction;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.RDFNode;
 import com.hp.hpl.jena.rdf.model.ResIterator;
@@ -340,8 +341,8 @@ public class DTACodeGenerator {
 		}
 
 		error |= generateFields(aType, type, null);
-		error |= generateGetters(aType, type, null, false, true);
-		error |= generateSetters(aType, type, null, false, true);
+		error |= generateGetters(aType, type, null, false, true, true);
+		error |= generateSetters(aType, type, null, false, true, true);
 		error |= generateHashCode(aType);
 		error |= generateEquals(aType);
 		error |= generateToString(aType);
@@ -416,8 +417,8 @@ public class DTACodeGenerator {
 			error=true;
 		}
 
-		error |= generateGetters(aType, type, null, true, false);
-		error |= generateSetters(aType, type, null, true, false);
+		error |= generateGetters(aType, type, null, true, false, false);
+		error |= generateSetters(aType, type, null, true, false, false);
 
 		monitor.done();
 		return error;
@@ -474,8 +475,8 @@ public class DTACodeGenerator {
 			typeOverrides.put(r.getOnProperty(), r.getAllValuesFrom());
 			
 		error |= generateFields(aType, input, typeOverrides);
-		error |= generateGetters(aType, input, typeOverrides, true, true);
-		error |= generateSetters(aType, input, typeOverrides, true, true);
+		error |= generateGetters(aType, input, typeOverrides, true, true, true);
+		error |= generateSetters(aType, input, typeOverrides, true, true, true);
 		error |= generateHashCode(aType);
 		error |= generateEquals(aType);
 		error |= generateToString(aType);
@@ -529,7 +530,7 @@ public class DTACodeGenerator {
     			String fieldTypePackName = getPackageName(fieldType);
     			if (!fieldTypePackName.equals("xsd") && !fieldTypePackName.equals(typePackage))
     				fieldTypeName = fieldTypePackName+"."+fieldTypeName;
-    			if (DTAUtilities.isMultiValued(type, property, DTA.restriction))
+    			if (isArray(type, property, DTA.restriction))
     				fieldTypeName += "[]";
     			
 				String genAnnot = "@Generated(\"true\")\n";
@@ -546,11 +547,15 @@ public class DTACodeGenerator {
 		return error;
 	}
 
-	private boolean generateGetters(IType aType, Resource type, Map<OntProperty, Resource> typeOverrides, boolean genComment, boolean genBody) {
+	private boolean generateGetters(IType aType, Resource type, Map<OntProperty, Resource> typeOverrides, boolean genComment, boolean genBody, boolean genInherited) {
 		boolean error=false;
 		String typePackage = getPackageName(type);
 
-		Set<OntProperty> properties = DTAUtilities.listAllProperties(type);
+		Set<OntProperty> properties;
+		if (genInherited)
+			properties = DTAUtilities.listAllProperties(type);
+		else
+			properties = DTAUtilities.listDeclaredProperties(type);
 
 		Map<String, Integer> nameCount = new HashMap<String, Integer>();
 		for (OntProperty property : properties) {
@@ -590,7 +595,7 @@ public class DTACodeGenerator {
     			if (!methodTypePackName.equals("xsd") && !methodTypePackName.equals(typePackage))
     				methodTypeName = methodTypePackName+"."+methodTypeName;
 
-    			if (DTAUtilities.isMultiValued(type, property, DTA.restriction))
+    			if (isArray(type, property, DTA.restriction))
     				methodTypeName += "[]";
 
     			String fieldName = getFieldName(property, false);
@@ -620,11 +625,15 @@ public class DTACodeGenerator {
 		return error;
 	}
 
-	private boolean generateSetters(IType aType, Resource type, Map<OntProperty, Resource> typeOverrides, boolean genComment, boolean genBody) {
+	private boolean generateSetters(IType aType, Resource type, Map<OntProperty, Resource> typeOverrides, boolean genComment, boolean genBody, boolean genInherited) {
 		boolean error=false;
 		String typePackage = getPackageName(type);
 
-		Set<OntProperty> properties = DTAUtilities.listAllProperties(type);
+		Set<OntProperty> properties;
+		if (genInherited)
+			properties = DTAUtilities.listAllProperties(type);
+		else
+			properties = DTAUtilities.listDeclaredProperties(type);
 
 		Map<String, Integer> nameCount = new HashMap<String, Integer>();
 		for (OntProperty property : properties) {
@@ -652,7 +661,7 @@ public class DTACodeGenerator {
 			if (!methodTypePackName.equals("xsd") && !methodTypePackName.equals(typePackage))
 				methodTypeName = methodTypePackName+"."+methodTypeName;
 
-			if (DTAUtilities.isMultiValued(type, property, DTA.restriction))
+			if (isArray(type, property, DTA.restriction))
 				methodTypeName += "[]";
 
 			IMethod aMethod = aType.getMethod(setterName, new String[]{Signature.createTypeSignature(methodTypeName, false)});
@@ -1014,7 +1023,7 @@ public class DTACodeGenerator {
     		String outputTypePackName = getPackageName(outputType);
 			if (!outputTypePackName.equals("xsd") && !outputTypePackName.equals(typePackage))
 				outputTypeName = outputTypePackName+"."+outputTypeName;
-    		boolean outputIsArray = DTAUtilities.isMultiValued(operation, outputProperty.as(Property.class), DTA.outputRestriction);
+    		boolean outputIsArray = isArray(operation, outputProperty.as(Property.class), DTA.outputRestriction);
     		if (outputIsArray)
     			outputTypeName += "[]";
     		if (outputProperty.canAs(DatatypeProperty.class))
@@ -1120,6 +1129,18 @@ public class DTACodeGenerator {
 	private String toTitleCase(String s) {
 		return s.substring(0, 1).toUpperCase()+s.substring(1);
 	}
+
+    public static boolean isArray(Resource type, Property property, Property kind) {
+    	for(Resource t : DTAUtilities.listSelfAndAllSuperClasses(type)) {
+        	Set<OntProperty> properties = DTAUtilities.listDeclaredProperties(t);
+    		if (properties.contains(property)) {
+		    	Restriction restriction = DTAUtilities.getRestriction(t, kind, property);
+		    	if (restriction==null || restriction.isMinCardinalityRestriction())
+		    		return true;
+    		}
+    	}
+    	return false;
+    }
 
 	private boolean isGenerated(IAnnotatable a) {
 		IAnnotation generated = a.getAnnotation("Generated");
