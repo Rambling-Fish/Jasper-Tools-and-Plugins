@@ -1,6 +1,5 @@
 package com.coralcea.jasper.tools.dta;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -13,9 +12,6 @@ import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.Status;
-import org.eclipse.jface.dialogs.ProgressMonitorDialog;
-import org.eclipse.jface.operation.IRunnableWithProgress;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.ui.statushandlers.StatusManager;
 
 import com.coralcea.jasper.tools.Activator;
@@ -35,44 +31,27 @@ public class DTAModelValidator {
 
 	private Map<Resource, List<String>> errors = new HashMap<Resource, List<String>>();
 
-	public static void run(Shell shell, final IFile file, final OntModel model) {
-		try {
-			new ProgressMonitorDialog(shell).run(true, false, new IRunnableWithProgress() {
-				public void run(IProgressMonitor monitor) throws InvocationTargetException,	InterruptedException {
-					try {
-						ResourcesPlugin.getWorkspace().run(getRunnable(file, model), monitor);
-						if (file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO).length!=0) {
-							Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
-							StatusManager.getManager().handle(status, StatusManager.BLOCK);
-						}
-					} catch (CoreException e) {
-						Activator.getDefault().log(e);
-					}
-				}
-			});
-		} catch (InterruptedException e) {
-		} catch (InvocationTargetException e) {
-			Activator.getDefault().log(e);
-		}
-	}
-	
-	public static IWorkspaceRunnable getRunnable(final IFile file, final OntModel model) {
-		return new IWorkspaceRunnable() {
+	public static boolean run(final IFile file, IProgressMonitor monitor, boolean block) throws CoreException {
+		ResourcesPlugin.getWorkspace().run(new IWorkspaceRunnable() {
 			public void run(IProgressMonitor monitor) throws CoreException {
-				new DTAModelValidator().validate(file, model, monitor);
+				new DTAModelValidator().validate(file, monitor);
 			}
-		};
+		}, monitor);
+		if (file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO).length!=0) {
+			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
+			StatusManager.getManager().handle(status, block ? StatusManager.BLOCK : StatusManager.SHOW);
+			return false;
+		}
+		return true;
 	}
 	
-	private boolean validate(IFile file, OntModel model, IProgressMonitor monitor) throws CoreException {
+	private boolean validate(IFile file, IProgressMonitor monitor) throws CoreException {
 		monitor.beginTask("Validating model", 17);
 
-		try {
-			for (IMarker problem : file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO))
-				problem.delete();
-		} catch (CoreException e) {
-			Activator.getDefault().log(e);
-		}
+		OntModel model = DTACore.getPossiblyLoadedModel(file);
+
+		for (IMarker problem : file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO))
+			problem.delete();
 		monitor.worked(1);
 
 		for(Resource operation : DTAUtilities.listResourcesOfType(model, DTA.Operation))

@@ -1,6 +1,5 @@
 package com.coralcea.jasper.tools.dta;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -8,10 +7,8 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 
-import org.eclipse.core.resources.IContainer;
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
-import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.MultiStatus;
@@ -40,11 +37,7 @@ import org.eclipse.jdt.core.dom.TextElement;
 import org.eclipse.jdt.core.dom.TypeDeclaration;
 import org.eclipse.jdt.core.formatter.CodeFormatter;
 import org.eclipse.jdt.core.formatter.DefaultCodeFormatterConstants;
-import org.eclipse.jface.dialogs.MessageDialog;
-import org.eclipse.jface.dialogs.ProgressMonitorDialog;
-import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.text.Document;
-import org.eclipse.swt.widgets.Shell;
 import org.eclipse.text.edits.TextEdit;
 import org.eclipse.ui.statushandlers.StatusManager;
 
@@ -67,61 +60,44 @@ import com.hp.hpl.jena.vocabulary.XSD;
 public class DTACodeGenerator {
 
 	private static final String BASE_PACKAGE = "base";
-	
-	public static void run(Shell shell, IFile file, final OntModel model) {
-		try {
-			MessageDialog question = new MessageDialog(shell, "Code Generation", null, "Are you sure you want to generate code ( in the 'src/main/java' folder)?", MessageDialog.CONFIRM, new String[]{"Yes", "No"}, 0);
-			if (question.open() != MessageDialog.OK)
-				return;
-			new ProgressMonitorDialog(shell).run(true, false, getRunnable(shell, file, model));
-		} catch (InterruptedException e) {
-			if (e.getMessage().equals("Invalid")) {
-				Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
-				StatusManager.getManager().handle(status, StatusManager.SHOW);
-			}
-		} catch (InvocationTargetException e) {
-			Activator.getDefault().log("Error during code generation", e);
-		}
-	}
-	
-	public static IRunnableWithProgress getRunnable(final Shell shell, final IFile file, final OntModel model) {
-		return new IRunnableWithProgress() {
-			public void run(IProgressMonitor monitor) throws InvocationTargetException, InterruptedException {
-				monitor.beginTask("Generating code", 10);
-				try {
-					ResourcesPlugin.getWorkspace().run(DTAModelValidator.getRunnable(file, model), new SubProgressMonitor(monitor, 3));
-					if (file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO).length!=0) {
-						Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
-						StatusManager.getManager().handle(status, StatusManager.BLOCK);
-						return;
-					}
-					
-					IResource container = file.getProject().findMember("src/main/java");
-					if (container==null || !container.exists()) {
-						Activator.getDefault().log("Could not find a folder named src/main/java in project '"+file.getProject().getName()+"'");
-						Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Errors were detected code generation. Please refer to the log for details.");
-						StatusManager.getManager().handle(status, StatusManager.BLOCK);
-						return;
-					}
-					
-					DTACodeGenerator generator = new DTACodeGenerator();
-					if (generator.generate((IContainer)container, model, new SubProgressMonitor(monitor, 7))) {
-						Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Errors were detected code generation. Please refer to the log for details.");
-						StatusManager.getManager().handle(status, StatusManager.BLOCK);
-					}
-				} catch (CoreException e) {
-					Activator.getDefault().log(e);
-				} finally {
-					monitor.done();
-				}
-			}
-		};
+
+	public static boolean run(final IFile file, IProgressMonitor monitor) throws CoreException {
+		if (!DTAModelValidator.run(file, new SubProgressMonitor(monitor, 3), true))
+			return false;
+		return generate(file, monitor);
 	}
 
-	private boolean generate(IContainer container, OntModel model, IProgressMonitor monitor) {
+	public static boolean generate(final IFile file, IProgressMonitor monitor) {
+		monitor.beginTask("Generatign code", 10);
+		DTACodeGenerator generator = new DTACodeGenerator();
+		boolean error = generator.generateAll(file, new SubProgressMonitor(monitor, 7));
+		monitor.done();
+		if (error) {
+			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Errors were detected code generation. Please refer to the log for details.");
+			StatusManager.getManager().handle(status, StatusManager.BLOCK);
+			return false;
+		}
+		return true;
+	}
+
+	private boolean generateAll(IFile file, IProgressMonitor monitor) {
 		boolean error=false;
-		
-		monitor.beginTask("Generating Code", 10);
+
+		IResource container = file.getProject().findMember("src/main/java");
+		if (container==null || !container.exists()) {
+			Activator.getDefault().log("Could not find a folder named src/main/java in project '"+file.getProject().getName()+"'");
+			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Errors were detected code generation. Please refer to the log for details.");
+			StatusManager.getManager().handle(status, StatusManager.BLOCK);
+			return false;
+		}
+
+		OntModel model;
+		try {
+			model = DTACore.getPossiblyLoadedModel(file);
+		} catch (CoreException e) {
+			Activator.getDefault().log("Failed to open DTA file", e);
+			return true;
+		}
 
 		Resource ontology = model.listOntologies().next();
 		String basePackage = DTAUtilities.getStringValue(ontology, DTA.basepackage);
@@ -131,7 +107,7 @@ public class DTACodeGenerator {
 			StatusManager.getManager().handle(status, StatusManager.BLOCK);
 			return false;
 		}
-		
+
 		Set<String> packages = new HashSet<String>();
 		Set<Resource> types = new HashSet<Resource>();
 		Set<Resource> operations = new HashSet<Resource>();
@@ -148,7 +124,6 @@ public class DTACodeGenerator {
 			for(String namespace : namespaces)
 				status.add(new Status(Status.ERROR, Activator.PLUGIN_ID, namespace));
 			StatusManager.getManager().handle(status, StatusManager.BLOCK);
-			monitor.done();
 			return false;
 		}
 		
@@ -160,15 +135,13 @@ public class DTACodeGenerator {
 		error |= generateOperations(root, operations, new SubProgressMonitor(monitor, 2));
 		error |= generateRequests(root, requests, new SubProgressMonitor(monitor, 2));
 		
-		monitor.done();
-
 		try {
 			container.refreshLocal(IResource.DEPTH_INFINITE, null);
 		} catch (CoreException e) {
 			Activator.getDefault().log("Failed to generate/update folder", e);
 			error=true;
 		}
-		
+
 		return error;
 	}
 	
@@ -530,7 +503,7 @@ public class DTACodeGenerator {
     			String fieldTypePackName = getPackageName(fieldType);
     			if (!fieldTypePackName.equals("xsd") && !fieldTypePackName.equals(typePackage))
     				fieldTypeName = fieldTypePackName+"."+fieldTypeName;
-    			if (isArray(type, property, DTA.restriction))
+    			if (isArrayProperty(type, property))
     				fieldTypeName += "[]";
     			
 				String genAnnot = "@Generated(\"true\")\n";
@@ -595,7 +568,7 @@ public class DTACodeGenerator {
     			if (!methodTypePackName.equals("xsd") && !methodTypePackName.equals(typePackage))
     				methodTypeName = methodTypePackName+"."+methodTypeName;
 
-    			if (isArray(type, property, DTA.restriction))
+    			if (isArrayProperty(type, property))
     				methodTypeName += "[]";
 
     			String fieldName = getFieldName(property, false);
@@ -661,7 +634,7 @@ public class DTACodeGenerator {
 			if (!methodTypePackName.equals("xsd") && !methodTypePackName.equals(typePackage))
 				methodTypeName = methodTypePackName+"."+methodTypeName;
 
-			if (isArray(type, property, DTA.restriction))
+			if (isArrayProperty(type, property))
 				methodTypeName += "[]";
 
 			IMethod aMethod = aType.getMethod(setterName, new String[]{Signature.createTypeSignature(methodTypeName, false)});
@@ -1023,7 +996,7 @@ public class DTACodeGenerator {
     		String outputTypePackName = getPackageName(outputType);
 			if (!outputTypePackName.equals("xsd") && !outputTypePackName.equals(typePackage))
 				outputTypeName = outputTypePackName+"."+outputTypeName;
-    		boolean outputIsArray = isArray(operation, outputProperty.as(Property.class), DTA.outputRestriction);
+    		boolean outputIsArray = isArrayOutput(operation, outputProperty.as(Property.class));
     		if (outputIsArray)
     			outputTypeName += "[]";
     		if (outputProperty.canAs(DatatypeProperty.class))
@@ -1130,16 +1103,21 @@ public class DTACodeGenerator {
 		return s.substring(0, 1).toUpperCase()+s.substring(1);
 	}
 
-    public static boolean isArray(Resource type, Property property, Property kind) {
-    	for(Resource t : DTAUtilities.listSelfAndAllSuperClasses(type)) {
+    public static boolean isArrayProperty(Resource type, Property property) {
+    	for(OntClass t : DTAUtilities.listSelfAndAllSuperClasses(type)) {
         	Set<OntProperty> properties = DTAUtilities.listDeclaredProperties(t);
     		if (properties.contains(property)) {
-		    	Restriction restriction = DTAUtilities.getRestriction(t, kind, property);
+		    	Restriction restriction = DTAUtilities.getRestriction(t,  DTA.restriction, property);
 		    	if (restriction==null || restriction.isMinCardinalityRestriction())
 		    		return true;
     		}
     	}
     	return false;
+    }
+
+    public static boolean isArrayOutput(Resource type, Property property) {
+    	Restriction restriction = DTAUtilities.getRestriction(type, DTA.outputRestriction, property);
+    	return restriction==null || restriction.isMinCardinalityRestriction();
     }
 
 	private boolean isGenerated(IAnnotatable a) {

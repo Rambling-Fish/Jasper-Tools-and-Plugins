@@ -6,7 +6,6 @@ import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
-import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
@@ -344,23 +343,13 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	public void doSave(IProgressMonitor monitor) {
 		try {
 			monitor.beginTask("Saving", 2);
-			validate(new SubProgressMonitor(monitor, 1));
+			DTAModelValidator.run(getFile(), new SubProgressMonitor(monitor, 1), false);
 			DTACore.saveModel(model, getFile(), false, new SubProgressMonitor(monitor, 1));
 			getCommandStack().markSaveLocation();
 		} catch(Throwable t) {
 			Activator.getDefault().log("Error saving DTA file", t);
 		} finally {
 			monitor.done();
-		}
-	}
-	
-	protected void validate(IProgressMonitor monitor) throws CoreException {
-		IFile file = getFile();
-		ResourcesPlugin.getWorkspace().run(DTAModelValidator.getRunnable(file, model), new SubProgressMonitor(monitor, 3));
-		if (file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO).length!=0) {
-			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
-			StatusManager.getManager().handle(status, StatusManager.SHOW);
-			return;
 		}
 	}
 	

@@ -1,9 +1,16 @@
 package com.coralcea.jasper.tools.dta.editors;
 
+import java.lang.reflect.InvocationTargetException;
+
+import org.eclipse.core.runtime.CoreException;
+import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.gef.ui.actions.SaveAction;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IToolBarManager;
 import org.eclipse.jface.action.Separator;
+import org.eclipse.jface.dialogs.MessageDialog;
+import org.eclipse.jface.dialogs.ProgressMonitorDialog;
+import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
 import org.eclipse.jface.viewers.ILabelProvider;
@@ -24,6 +31,7 @@ import org.eclipse.swt.widgets.Event;
 import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
+import org.eclipse.swt.widgets.Shell;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
@@ -77,7 +85,24 @@ public abstract class DTAViewer extends Viewer {
 		if (!DTAUtilities.isLibrary(getEditor().getModel().listOntologies().next())) {
 			action = new Action("Code Gen") {
 				public void run() {
-					DTACodeGenerator.run(getEditor().getSite().getShell(), getEditor().getFile(), getEditor().getModel());
+					try {
+						Shell shell = getEditor().getSite().getShell();
+						MessageDialog question = new MessageDialog(shell, "Code Generation", null, "Are you sure you want to generate code ( in the 'src/main/java' folder)?", MessageDialog.CONFIRM, new String[]{"Yes", "No"}, 0);
+						if (question.open() != MessageDialog.OK)
+							return;
+						new ProgressMonitorDialog(shell).run(true, false, new IRunnableWithProgress() {
+							public void run(IProgressMonitor monitor) throws InvocationTargetException,	InterruptedException {
+								try {
+									DTACodeGenerator.run(getEditor().getFile(), monitor);
+								} catch (CoreException e) {
+									Activator.getDefault().log(e);
+								}
+							}
+						});
+					} catch (InterruptedException e) {
+					} catch (InvocationTargetException e) {
+						Activator.getDefault().log("Error during code generation", e);
+					}
 				}
 			};
 			action.setToolTipText("Generate code");
@@ -87,7 +112,20 @@ public abstract class DTAViewer extends Viewer {
 		
 		action = new Action("Validate") {
 			public void run() {
-				DTAModelValidator.run(getEditor().getSite().getShell(), getEditor().getFile(), getEditor().getModel());
+				try {
+					new ProgressMonitorDialog(getEditor().getSite().getShell()).run(true, false, new IRunnableWithProgress() {
+						public void run(IProgressMonitor monitor) throws InvocationTargetException,	InterruptedException {
+							try {
+								DTAModelValidator.run(getEditor().getFile(), monitor, true);
+							} catch (CoreException e) {
+								Activator.getDefault().log(e);
+							}
+						}
+					});
+				} catch (InterruptedException e) {
+				} catch (InvocationTargetException e) {
+					Activator.getDefault().log("Error during model validation", e);
+				}
 			}
 		};
 		action.setToolTipText("Validate model");
