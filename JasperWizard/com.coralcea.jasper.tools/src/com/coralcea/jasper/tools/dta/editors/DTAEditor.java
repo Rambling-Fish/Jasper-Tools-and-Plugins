@@ -6,6 +6,7 @@ import java.util.List;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
+import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.IResourceChangeEvent;
 import org.eclipse.core.resources.IResourceChangeListener;
 import org.eclipse.core.resources.IResourceDelta;
@@ -16,6 +17,7 @@ import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Status;
+import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CommandStack;
 import org.eclipse.gef.commands.CommandStackEvent;
@@ -52,6 +54,7 @@ import org.eclipse.ui.texteditor.IDocumentProvider;
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
+import com.coralcea.jasper.tools.dta.DTAModelValidator;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.rdf.model.Resource;
 
@@ -339,12 +342,25 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 
 	@Override
 	public void doSave(IProgressMonitor monitor) {
-		IFile file = getFile();
 		try {
-			DTACore.saveModel(model, file, false, monitor);
+			monitor.beginTask("Saving", 2);
+			validate(new SubProgressMonitor(monitor, 1));
+			DTACore.saveModel(model, getFile(), false, new SubProgressMonitor(monitor, 1));
 			getCommandStack().markSaveLocation();
 		} catch(Throwable t) {
 			Activator.getDefault().log("Error saving DTA file", t);
+		} finally {
+			monitor.done();
+		}
+	}
+	
+	protected void validate(IProgressMonitor monitor) throws CoreException {
+		IFile file = getFile();
+		ResourcesPlugin.getWorkspace().run(DTAModelValidator.getRunnable(file, model), new SubProgressMonitor(monitor, 3));
+		if (file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO).length!=0) {
+			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Validation problems can be inspected in Problems view");
+			StatusManager.getManager().handle(status, StatusManager.SHOW);
+			return;
 		}
 	}
 	
