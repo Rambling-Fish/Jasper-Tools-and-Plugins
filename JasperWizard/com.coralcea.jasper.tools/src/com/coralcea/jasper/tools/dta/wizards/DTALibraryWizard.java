@@ -87,7 +87,7 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 		monitor.beginTask("Creating library", 1);
 		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelFile));
 		createLibrary(file, modelName, modelNamespace, monitor);
-		updatePolicy(project, modelName, modelName);
+		updatePolicy(project, modelName, modelFile);
 		
 		new UIJob("Open DATA Library") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
@@ -121,10 +121,10 @@ public class DTALibraryWizard extends Wizard implements INewWizard {
 		model.close();
 	}
 	
-	private void updatePolicy(IProject project, String modelName, String modelURI) {
+	private void updatePolicy(IProject project, String modelURI, String modelName) {
 		IFile policy = project.getFile(Path.fromOSString("src/main/app/"+DTA.IMPORT_POLICY));
 		Model imports = DTACore.loadImportPolicyModel(policy);
-		DTACore.addImportPolicyEntry(imports, modelURI, "file:"+modelName+"."+DTA.EXTENSION);
+		DTACore.addImportPolicyEntry(imports, modelURI, "file:"+modelName);
 		DTACore.saveImportPolicyModel(imports, policy);
 	}
 	

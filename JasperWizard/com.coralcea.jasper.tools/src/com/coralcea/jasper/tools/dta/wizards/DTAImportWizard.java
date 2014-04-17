@@ -30,30 +30,23 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Model;
 
-public abstract class DTAImportWizard extends Wizard implements IImportWizard {
+public class DTAImportWizard extends Wizard implements IImportWizard {
 	protected DTAImportWizardPage importPage;
 	protected IStructuredSelection selection;
-
-	public static class OWL extends DTAImportWizard {
-		public void addPages() {
-			addPage(importPage = new DTAOwlImportWizardPage(selection));
-		}
-	}
-	
-	public static class XSD extends DTAImportWizard {
-		public void addPages() {
-			addPage(importPage = new DTAXsdImportWizardPage(selection));
-		}
-	}
 
 	/**
 	 * Constructor for ConvertToDTA.
 	 */
-	private DTAImportWizard() {
+	public DTAImportWizard() {
 		setNeedsProgressMonitor(true);
 		setWindowTitle("Import DTA Library");
 	}
 	
+	@Override
+	public void addPages() {
+		addPage(importPage = new DTAImportWizardPage(selection));
+	}
+
 	/**
 	 * This method is called when 'Finish' button is pressed in
 	 * the wizard. We will create an operation and run it
@@ -61,7 +54,7 @@ public abstract class DTAImportWizard extends Wizard implements IImportWizard {
 	 */
 	public boolean performFinish() {
 		final IProject project = importPage.getProject();
-		final String modelName = importPage.getModelName();
+		final String modelName = importPage.getModelFile();
 		final OntModel loadedModel = importPage.getLoadedModel();
 		IRunnableWithProgress op = new IRunnableWithProgress() {
 			public void run(IProgressMonitor monitor) throws InvocationTargetException {
@@ -92,7 +85,7 @@ public abstract class DTAImportWizard extends Wizard implements IImportWizard {
 		Ontology ont = loadedModel.listOntologies().next();
 		ont.setPropertyValue(DTA.isLibrary, loadedModel.createTypedLiteral(true));
 
-		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelName+"."+DTA.EXTENSION));
+		final IFile file = (IFile) project.getFile(Path.fromOSString("src/main/app/"+modelName));
 		try {
 			DTACore.saveModel(loadedModel, file, false, monitor);
 		} catch (CoreException e) {
@@ -102,7 +95,7 @@ public abstract class DTAImportWizard extends Wizard implements IImportWizard {
 		String modelURI = loadedModel.listOntologies().next().getURI();
 		loadedModel.close();
 		
-		updatePolicy(project, modelName, modelURI);
+		updatePolicy(project, modelURI, modelName);
 		
 		new UIJob("Open DATA Library") {
 			public IStatus runInUIThread(IProgressMonitor monitor) {
@@ -120,10 +113,10 @@ public abstract class DTAImportWizard extends Wizard implements IImportWizard {
 		monitor.done();
 	}
 	
-	private void updatePolicy(IProject project, String modelName, String modelURI) {
+	private void updatePolicy(IProject project,  String modelURI, String modelName) {
 		IFile policy = project.getFile(Path.fromOSString("src/main/app/"+DTA.IMPORT_POLICY));
 		Model imports = DTACore.loadImportPolicyModel(policy);
-		DTACore.addImportPolicyEntry(imports, modelURI, "file:"+modelName+"."+DTA.EXTENSION);
+		DTACore.addImportPolicyEntry(imports, modelURI, "file:"+modelName);
 		DTACore.saveImportPolicyModel(imports, policy);
 	}
 	

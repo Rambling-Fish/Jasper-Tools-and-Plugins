@@ -33,13 +33,14 @@ import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntModel;
 
-public abstract class DTAImportWizardPage extends WizardPage {
+public class DTAImportWizardPage extends WizardPage {
 
 	private static final String MULE_NATURE = "org.mule.tooling.core.muleNature";
 
 	private ComboViewer projectName;
+	private Text modelFile;
+	private ComboViewer fileKind;
 	private Text filePath;
-	private Text modelName;
 	private Button loadButton;
 	private OntModel loadedModel;
 	private IStructuredSelection selection;
@@ -49,6 +50,8 @@ public abstract class DTAImportWizardPage extends WizardPage {
 	 */
 	public DTAImportWizardPage(IStructuredSelection selection) {
 		super("wizardPage");
+		setTitle("Import DTA library from a file");
+		setDescription("Create a new DTA library based on an imported file");
 		this.selection = selection;
 	}
 
@@ -87,28 +90,29 @@ public abstract class DTAImportWizardPage extends WizardPage {
 		projectName.setInput(ResourcesPlugin.getWorkspace().getRoot().getProjects());
         
 		label = new Label(container, SWT.NULL);
-		label.setText("Library name:");
-		label.setToolTipText("The name of the DTA library");
+		label.setText("Library file:");
+		label.setToolTipText("The unique name of the DTA library file (.dta)");
 
-		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
-		modelName.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		((GridData)modelName.getLayoutData()).horizontalSpan = 3;
-		modelName.addModifyListener(new ModifyListener() {
+		modelFile = new Text(container, SWT.BORDER | SWT.SINGLE);
+		modelFile.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		((GridData)modelFile.getLayoutData()).horizontalSpan = 3;
+		modelFile.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
 				dialogChanged();
 			}
 		});
 
-		label = createFileLabel(container);
+		label = new Label(container, SWT.NULL);
+		label.setText("Imported file:");
+		label.setToolTipText("The path to the imported file");
 
 		filePath = new Text(container, SWT.BORDER | SWT.SINGLE);
 		filePath.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
 		filePath.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
 				dialogChanged();
-				String path = new Path(filePath.getText()).removeFileExtension().lastSegment();
-				modelName.setText(path!=null ? path : "");
-				loadButton.setEnabled(path!=null);
+				String path = new Path(filePath.getText()).removeFileExtension().lastSegment()+"."+DTA.EXTENSION;
+				modelFile.setText(path);
 			}
 		});
 
@@ -125,7 +129,6 @@ public abstract class DTAImportWizardPage extends WizardPage {
 
 		loadButton = new Button(container, SWT.PUSH);
 		loadButton.setText("Load");
-		loadButton.setEnabled(false);
 		loadButton.addListener(SWT.Selection, new Listener() {
 			public void handleEvent(Event event) {
 				loadModel();
@@ -133,13 +136,31 @@ public abstract class DTAImportWizardPage extends WizardPage {
 			}
 		});
 		
+		label = new Label(container, SWT.NULL);
+		label.setText("Import kind:");
+		label.setToolTipText("The kind of file to import");
+
+		fileKind = new ComboViewer(container, SWT.READ_ONLY);
+		fileKind.setContentProvider(ArrayContentProvider.getInstance());
+		fileKind.getCombo().setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		((GridData)fileKind.getCombo().getLayoutData()).horizontalSpan = 3;
+		fileKind.setLabelProvider(new LabelProvider() {
+			public String getText(Object element) {
+				return ((DTAImporter)element).getName();
+			}
+        });
+		fileKind.addSelectionChangedListener(new ISelectionChangedListener() {
+			public void selectionChanged(SelectionChangedEvent event) {
+				dialogChanged();
+			}
+		});
+		fileKind.setInput(new DTAImporter[]{new DTAOwlImporter(), new DTAXsdImporter()});
+
 		initialize();
 		dialogChanged();
 		setControl(container);
 	}
 	
-	protected abstract Label createFileLabel(Composite parent);
-
 	/**
 	 * Tests if the current workbench selection is a suitable container to use.
 	 */
@@ -156,6 +177,9 @@ public abstract class DTAImportWizardPage extends WizardPage {
 					projectName.setSelection(new StructuredSelection(project));
 			}
 		}
+		fileKind.setSelection(new StructuredSelection(((DTAImporter[])fileKind.getInput())[0]));
+		loadButton.setEnabled(false);
+		filePath.setFocus();
 	}
 
 	/**
@@ -173,25 +197,43 @@ public abstract class DTAImportWizardPage extends WizardPage {
 			return;
 		}
 		
-		if (getOntologyPath().length()>0) {
-			if (!DTAUtilities.isValidFile(getOntologyPath())) {
-				loadButton.setEnabled(false);
-				updateStatus("Invalid file path");
-				return;
-			}
-			
-			if (getLoadedModel() == null) {
-				updateStatus("File must be (re)loaded");
-				return;
-			}
-		}
-
-		IResource model = project.findMember("src/main/app/"+getModelName()+"."+DTA.EXTENSION);
-		if (model != null && model.exists()) {
-			updateStatus("DTA library already exists for this project");
+		String filepath = getFilePath();
+		if (filepath.length() == 0) {
+			loadButton.setEnabled(false);
+			updateStatus("Imported file must be specified");
 			return;
 		}
 		
+		if (!DTAUtilities.isValidFile(filepath)) {
+			loadButton.setEnabled(false);
+			updateStatus("Invalid imported file path");
+			return;
+		}
+			
+		loadButton.setEnabled(true);
+
+		String modelName = getModelFile();
+		if (modelName.length() == 0) {
+			updateStatus("Library file must be specified");
+			return;
+		}
+		
+		if (!getModelFile().endsWith("."+DTA.EXTENSION)) {
+			updateStatus("Library file name must end with .dta");
+			return;
+		}
+
+		IResource model = project.findMember("src/main/app/"+modelName);
+		if (model != null && model.exists()) {
+			updateStatus("Library file already exists in this project");
+			return;
+		}
+		
+		if (getLoadedModel() == null) {
+			updateStatus("Imported file must be (re)loaded");
+			return;
+		}
+
 		updateStatus(null);
 	}
 
@@ -204,12 +246,16 @@ public abstract class DTAImportWizardPage extends WizardPage {
 		return (IProject) ((IStructuredSelection)projectName.getSelection()).getFirstElement();
 	}
 
-	protected String getOntologyPath() {
-		return filePath.getText();
+	public String getModelFile() {
+		return modelFile.getText();
 	}
 
-	public String getModelName() {
-		return modelName.getText();
+	public DTAImporter getFileImporter() {
+		return (DTAImporter) ((IStructuredSelection)fileKind.getSelection()).getFirstElement();
+	}
+
+	protected String getFilePath() {
+		return filePath.getText();
 	}
 
 	public OntModel getLoadedModel() {
@@ -218,7 +264,7 @@ public abstract class DTAImportWizardPage extends WizardPage {
 
 	protected void loadModel() {
 		unloadModel();
-		loadedModel = importFile(getOntologyPath());
+		loadedModel = importFile(getFilePath());
 	}
 
 	protected void unloadModel() {
@@ -228,6 +274,8 @@ public abstract class DTAImportWizardPage extends WizardPage {
 		}
 	}
 	
-	protected abstract OntModel importFile(String path);
+	protected OntModel importFile(String path) {
+		return getFileImporter().importFile(path);
+	}
 	
 }

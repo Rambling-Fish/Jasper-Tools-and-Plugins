@@ -30,16 +30,9 @@
       </category>
       <wizard
             id="com.coralcea.jasper.wizards.DTALibrary"
-            name="DTA Library from OWL Ontology"
+            name="DTA Library"
             category="com.coralcea.jasper.wizards"
-            class="com.coralcea.jasper.tools.dta.wizards.DTAImportWizard$OWL"
-            icon="icons/file.gif">
-      </wizard>   
-      <wizard
-            id="com.coralcea.jasper.wizards.DTALibrary"
-            name="DTA Library from XSD Schema"
-            category="com.coralcea.jasper.wizards"
-            class="com.coralcea.jasper.tools.dta.wizards.DTAImportWizard$XSD"
+            class="com.coralcea.jasper.tools.dta.wizards.DTAImportWizard"
             icon="icons/file.gif">
       </wizard>   
    </extension>

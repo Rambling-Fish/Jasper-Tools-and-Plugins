@@ -125,8 +125,8 @@ public class DTAImportPolicyDialog extends Dialog {
 		final TableViewer viewer = new TableViewer(container, SWT.MULTI | SWT.HORIZONTAL | SWT.VERTICAL | SWT.FULL_SELECTION | SWT.BORDER);
  		viewer.setContentProvider(new IStructuredContentProvider() {
 			public Object[] getElements(Object inputElement) {
-				List<Resource> statements = model.listResourcesWithProperty(RDF.type, OntDocumentManager.ONTOLOGY_SPEC).toList();
-				return statements.toArray();
+				List<Resource> specs = model.listResourcesWithProperty(RDF.type, OntDocumentManager.ONTOLOGY_SPEC).toList();
+				return specs.toArray();
 			}
 			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
 			}

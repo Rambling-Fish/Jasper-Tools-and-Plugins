@@ -50,6 +50,8 @@ public abstract class DTAImporter {
 	private static final Resource[] dateTypes = new Resource[] {XSD.gDay, XSD.gMonth, XSD.gMonthDay, XSD.gYear, XSD.gYearMonth};
 	private static final Set<Resource> dateTypeSet = new HashSet<Resource>(Arrays.asList(dateTypes));
 	
+	public abstract String getName();
+	
 	public final OntModel importFile(String path) {
 		OntModel model = null;
 		
@@ -57,7 +59,7 @@ public abstract class DTAImporter {
 			model = readFile(path);
 		} catch (Exception e) {
 			Activator.getDefault().log(e);
-			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.ERROR, "Problems reading the file with this importer", null);
+			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.ERROR, "Problems reading the file with this import kind", null);
 			status.add(new Status(Status.ERROR, Activator.PLUGIN_ID, e.getMessage(), e));
 			StatusManager.getManager().handle(status, StatusManager.BLOCK);
 			return null;

@@ -16,10 +16,15 @@ import com.hp.hpl.jena.rdf.model.Statement;
 
 public class DTAXsdImporter extends DTAImporter {
 	
+	public static final String NAME = "XSD Schema";
+
 	private static final Resource Enumeration = ResourceFactory.createResource("http://www.srdc.com.tr/ontmalizer#Enumeration");
 	private static final Resource EnumeratedValue = ResourceFactory.createResource("http://www.srdc.com.tr/ontmalizer#EnumeratedValue");
 	private static final Property hasValue = ResourceFactory.createProperty("http://www.srdc.com.tr/ontmalizer#hasValue");
 	
+	public String getName() {
+		return NAME;
+	}
 	
 	public OntModel readFile(String path) throws Exception {
 	    XSD2OWLMapper mapping = new XSD2OWLMapper(new File(path));

@@ -85,7 +85,7 @@ public class DTALibraryWizardPage extends WizardPage {
         
 		label = new Label(container, SWT.NULL);
 		label.setText("Library file:");
-		label.setToolTipText("The unique name of the DTA library file");
+		label.setToolTipText("The unique name of the DTA library file (.dta)");
 
 		modelFile = new Text(container, SWT.BORDER | SWT.SINGLE);
 		modelFile.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));

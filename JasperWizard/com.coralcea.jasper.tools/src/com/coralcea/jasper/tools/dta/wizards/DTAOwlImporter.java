@@ -15,6 +15,12 @@ import com.hp.hpl.jena.vocabulary.RDF;
 
 public class DTAOwlImporter extends DTAImporter {
 	
+	public static final String NAME = "OWL Ontology";
+	
+	public String getName() {
+		return NAME;
+	}
+
 	public OntModel readFile(String path) throws Exception {
 		OntModel model = DTACore.createNewModel();
 		model.read(path);

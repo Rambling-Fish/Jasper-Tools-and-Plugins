@@ -215,7 +215,7 @@ public class DTACore  {
 		}
 	}
 	
-	public static Resource addImportPolicyEntry(Model model, String publicURI, String fileURL) {
+	public static Resource addImportPolicyEntry(Model model, String publicURI, String altURL) {
 		Resource spec = null;
 		for (Resource statement : model.listResourcesWithProperty(RDF.type, OntDocumentManager.ONTOLOGY_SPEC).toList()) {
 			if (publicURI.equals(statement.getPropertyResourceValue(OntDocumentManager.PUBLIC_URI).getURI()))
@@ -225,7 +225,8 @@ public class DTACore  {
 			spec = model.createResource(OntDocumentManager.ONTOLOGY_SPEC);
 			spec.addProperty(OntDocumentManager.PUBLIC_URI, model.getResource(publicURI));
 		}
-		spec.addProperty(OntDocumentManager.ALT_URL, model.getResource(fileURL));
+		spec.removeAll(OntDocumentManager.ALT_URL);
+		spec.addProperty(OntDocumentManager.ALT_URL, model.getResource(altURL));
 		return spec;
 	}
 
