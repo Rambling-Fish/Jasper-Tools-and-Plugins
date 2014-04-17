@@ -3,6 +3,7 @@ package com.coralcea.jasper.tools.dta;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IMarker;
@@ -25,6 +26,7 @@ import com.hp.hpl.jena.ontology.Restriction;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.OWL;
+import com.hp.hpl.jena.vocabulary.RDF;
 import com.hp.hpl.jena.vocabulary.RDFS;
 
 public class DTAModelValidator {
@@ -49,6 +51,12 @@ public class DTAModelValidator {
 		monitor.beginTask("Validating model", 17);
 
 		OntModel model = DTACore.getPossiblyLoadedModel(file);
+
+		Resource ontology = model.listOntologies().next();
+		String basePackage = DTAUtilities.getStringValue(ontology, DTA.basepackage);
+		final Pattern pattern = Pattern.compile("^[a-zA-Z_\\$][\\w\\$]*(?:\\.[a-zA-Z_\\$][\\w\\$]*)*$");
+		if (basePackage.length()>0 && !pattern.matcher(basePackage).matches())
+			log(file, ontology, "has an invalid base package", IMarker.SEVERITY_ERROR);
 
 		for (IMarker problem : file.findMarkers(DTA.MARKER, false, IResource.DEPTH_ZERO))
 			problem.delete();
@@ -106,19 +114,31 @@ public class DTAModelValidator {
 
 	private void validateProperty(IFile file, Resource property) throws CoreException {
 		Resource type = property.getPropertyResourceValue(RDFS.range);
-		if (type == null)
-			log(file, property, "does not have a type", IMarker.SEVERITY_ERROR);
+		if (DTAUtilities.isDatatypeProperty(property) && !DTAUtilities.isSupportedDatatype(type))
+			log(file, property, "does not have a supported type", IMarker.SEVERITY_ERROR);
 
 		for(Resource equivalentProperty : DTAUtilities.listObjects(property, OWL.equivalentProperty, Resource.class)) {
-			Resource equivalentType = equivalentProperty.getPropertyResourceValue(RDFS.range);
-			if (equivalentType!=null && !equivalentType.equals(type))
-				log(file, property, "does not have the same type as its equivalent property <"+equivalentProperty+">", IMarker.SEVERITY_ERROR);
+			if (property.getModel().contains(equivalentProperty, RDF.type)) {
+				Resource equivalentType = equivalentProperty.getPropertyResourceValue(RDFS.range);
+				if ((type==null && equivalentType!=null) || (type!=null && !type.equals(equivalentType)))
+					log(file, property, "does not have the same type as its equivalent property <"+equivalentProperty+">", IMarker.SEVERITY_ERROR);
+			}
 		}
 
 		for(Resource superProperty : DTAUtilities.listObjects(property, RDFS.subPropertyOf, Resource.class)) {
-			Resource superType = superProperty.getPropertyResourceValue(RDFS.range);
-			if (superType!=null && !DTAUtilities.listSelfAndAllSubClasses(superType).contains(type))
-				log(file, property, "does not have a compatible type with its super property <"+superProperty+">", IMarker.SEVERITY_ERROR);
+			if (property.getModel().contains(superProperty, RDF.type)) {
+				Resource superType = superProperty.getPropertyResourceValue(RDFS.range);
+				if (type==null) {
+					if (superType!=null)
+						log(file, property, "does not have a compatible type with its super property <"+superProperty+">", IMarker.SEVERITY_ERROR);
+				} else if (DTAUtilities.isDatatypeProperty(property)) {
+					if (!type.equals(superType) && superType!=null && !RDFS.Literal.equals(superType))
+						log(file, property, "does not have a compatible type with its super property <"+superProperty+">", IMarker.SEVERITY_ERROR);
+				} else {
+					if (superType!=null && !DTAUtilities.listSelfAndAllSuperClasses(type).contains(superType))
+						log(file, property, "does not have a compatible type with its super property <"+superProperty+">", IMarker.SEVERITY_ERROR);
+				}
+			}
 		}
 	}
 	

@@ -45,7 +45,7 @@ public class DTAModelWizardPage extends WizardPage {
 	 */
 	public DTAModelWizardPage(IStructuredSelection selection) {
 		super("wizardPage");
-		setTitle("Create a new DTA Model");
+		setTitle("Create a new DTA model");
 		setDescription("Create and configure a new DTA model.");
 		this.selection = selection;
 	}

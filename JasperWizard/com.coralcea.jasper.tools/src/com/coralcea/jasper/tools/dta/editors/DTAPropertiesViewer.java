@@ -443,11 +443,11 @@ public class DTAPropertiesViewer extends DTAViewer {
 					}
 					if (type != null && !type.equals(element.getRange())) {
 						cc.add(new SetPropertyCommand(element, RDFS.range, DTA.None.equals(type) ? null : type));
-						if (element.isDatatypeProperty() && !DTA.None.equals(type) && !DTAUtilities.isDatatype(type)) {
+						if (element.isDatatypeProperty() && (DTA.None.equals(type) || !DTAUtilities.isDatatype(type))) {
 							cc.add(new RemovePropertyCommand(element, RDF.type, OWL.DatatypeProperty));
 							cc.add(new AddPropertyCommand(element, RDF.type, OWL.ObjectProperty));
 						}
-						else if (element.isObjectProperty() && (DTA.None.equals(type) || DTAUtilities.isDatatype(type))) {
+						else if (element.isObjectProperty() && !DTA.None.equals(type) && DTAUtilities.isDatatype(type)) {
 							cc.add(new RemovePropertyCommand(element, RDF.type, OWL.ObjectProperty));
 							cc.add(new AddPropertyCommand(element, RDF.type, OWL.DatatypeProperty));
 						}

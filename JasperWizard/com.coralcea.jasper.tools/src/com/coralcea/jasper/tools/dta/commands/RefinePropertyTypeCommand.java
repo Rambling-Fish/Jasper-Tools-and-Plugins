@@ -33,11 +33,11 @@ public class RefinePropertyTypeCommand extends DTACommand {
 		
 		if (DTA.None.equals(newType) || newType.equals(property.getRange())) {
 			if (r!=null)
-				oldStatements = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
+				oldStatements = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		} else if (r==null) {
 			r = element.getOntModel().createAllValuesFromRestriction(null, property, newType);
 			element.getOntModel().add(element, DTA.inputRestriction, r);
-			newStatements = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
+			newStatements = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		} else {
 			oldStatements = element.getOntModel().listStatements(r, OWL.allValuesFrom, (RDFNode)null).toList();
 			r.asAllValuesFromRestriction().setAllValuesFrom(newType);

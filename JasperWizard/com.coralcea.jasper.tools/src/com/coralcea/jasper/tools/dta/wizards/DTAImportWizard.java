@@ -30,26 +30,30 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Model;
 
-public class DTAImportOwlWizard extends Wizard implements IImportWizard {
-	private DTAImportOwlWizardPage importPage;
-	private IStructuredSelection selection;
+public abstract class DTAImportWizard extends Wizard implements IImportWizard {
+	protected DTAImportWizardPage importPage;
+	protected IStructuredSelection selection;
+
+	public static class OWL extends DTAImportWizard {
+		public void addPages() {
+			addPage(importPage = new DTAOwlImportWizardPage(selection));
+		}
+	}
+	
+	public static class XSD extends DTAImportWizard {
+		public void addPages() {
+			addPage(importPage = new DTAXsdImportWizardPage(selection));
+		}
+	}
 
 	/**
 	 * Constructor for ConvertToDTA.
 	 */
-	public DTAImportOwlWizard() {
+	private DTAImportWizard() {
 		setNeedsProgressMonitor(true);
-		setWindowTitle("Import DTA Model");
+		setWindowTitle("Import DTA Library");
 	}
 	
-	/**
-	 * Adding the page to the wizard.
-	 */
-
-	public void addPages() {
-		addPage(importPage = new DTAImportOwlWizardPage(selection));
-	}
-
 	/**
 	 * This method is called when 'Finish' button is pressed in
 	 * the wizard. We will create an operation and run it

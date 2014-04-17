@@ -4,8 +4,10 @@ import java.io.File;
 import java.net.URI;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -44,6 +46,10 @@ import com.hp.hpl.jena.vocabulary.RDFS;
 import com.hp.hpl.jena.vocabulary.XSD;
 
 public class DTAUtilities {
+	
+	private static final Resource[] primitives = new Resource[] {XSD.integer, XSD.decimal, XSD.xstring, XSD.xboolean, XSD.duration, XSD.time, XSD.date, XSD.dateTime, XSD.hexBinary, RDFS.Literal};
+	private static final Set<Resource> primitiveSet = new HashSet<Resource>(Arrays.asList(primitives));
+
 
 	public static String getLabel(RDFNode node) {
 		if (node == null)
@@ -131,15 +137,19 @@ public class DTAUtilities {
 		return (output!=null) ? output.as(OntProperty.class) : null;
 	}
 
-	public static Set<OntClass> listSelfAndAllSubClasses(Resource type) {
-		Set<OntClass> subclasses = type.as(OntClass.class).listSubClasses().toSet();
+	public static List<OntClass> listSelfAndAllSubClasses(Resource type) {
+		List<OntClass> subclasses = new ArrayList<OntClass>();
 		subclasses.add(type.as(OntClass.class));
+		for (Iterator<OntClass> i = type.as(OntClass.class).listSubClasses(true); i.hasNext();)
+			subclasses.addAll(listSelfAndAllSubClasses(i.next()));
 	    return subclasses;
 	}
 
-	public static Set<OntClass> listSelfAndAllSuperClasses(Resource type) {
-		Set<OntClass> superclasses = type.as(OntClass.class).listSuperClasses().toSet();
+	public static List<OntClass> listSelfAndAllSuperClasses(Resource type) {
+		List<OntClass> superclasses = new ArrayList<OntClass>();
 		superclasses.add(type.as(OntClass.class));
+		for (Iterator<OntClass> i = type.as(OntClass.class).listSuperClasses(true); i.hasNext();)
+			superclasses.addAll(listSelfAndAllSuperClasses(i.next()));
 	    return superclasses;
 	}
 
@@ -260,12 +270,7 @@ public class DTAUtilities {
 
 	public static Collection<Resource> listAvailableTypes(OntModel model) {
 		Collection<Resource> types = new ArrayList<Resource>(DTAUtilities.listClasses(model));
-		types.add(XSD.integer);
-		types.add(XSD.decimal);
-		types.add(XSD.xstring);
-		types.add(XSD.xboolean);
-		types.add(XSD.date);
-		types.add(RDFS.Literal);
+		types.addAll(primitiveSet);
 		return types;
 	}
 
@@ -353,10 +358,15 @@ public class DTAUtilities {
 
     public static boolean isDatatype(Resource resource) {
     	return XSD.getURI().equals(resource.getNameSpace()) || 
-    		   RDFS.Literal.equals(resource);
+     		   RDFS.Literal.equals(resource) ||
+     		   resource.getModel().contains(resource, RDF.type, RDFS.Datatype);
 	}
 
-	public static boolean isCardinality(Resource resource) {
+    public static boolean isSupportedDatatype(Resource resource) {
+    	return primitiveSet.contains(resource);
+	}
+
+    public static boolean isCardinality(Resource resource) {
 		Set<Resource> types = listRDFTypes(resource);
 		return types.contains(OWL.minCardinality) || 
 			   types.contains(OWL.maxCardinality) || 
@@ -370,7 +380,17 @@ public class DTAUtilities {
 			   types.contains(RDF.Property);
 	}
 
-    public static boolean isOperation(Resource resource) {
+	public static boolean isDatatypeProperty(Resource resource) {
+		Set<Resource> types = listRDFTypes(resource);
+		return types.contains(OWL.DatatypeProperty);
+	}
+
+	public static boolean isObjectProperty(Resource resource) {
+		Set<Resource> types = listRDFTypes(resource);
+		return types.contains(OWL.ObjectProperty);
+	}
+
+	public static boolean isOperation(Resource resource) {
 		Set<Resource> types = listRDFTypes(resource);
     	return types.contains(DTA.Operation);
     }
@@ -412,13 +432,36 @@ public class DTAUtilities {
     	return s!=null ? s.getObject().asLiteral().getInt() : 0;
     }
     
-    public static List<Statement> listStatementsOn(Model model, Resource resource) {
+    public static List<Statement> listDirectStatementsOn(Model model, Resource resource) {
     	List<Statement> statements = new ArrayList<Statement>();
 		statements.addAll(model.listStatements(resource, null, (RDFNode)null).toList());
 		statements.addAll(model.listStatements((Resource)null, null, resource).toList());
 		return statements;
     }
     
+    public static List<Statement> listAllStatementsOn(Model model, Resource resource) {
+    	List<Statement> statements = new ArrayList<Statement>();
+
+		for(StmtIterator i = model.listStatements(resource, null, (RDFNode)null); i.hasNext();) {
+			Statement s = i.next();
+			statements.add(s);
+			if (s.getObject().isAnon())
+				statements.addAll(listAllStatementsOn(model, s.getObject().asResource()));
+		}
+		
+		for(StmtIterator i = model.listStatements(null, null, resource); i.hasNext();) {
+			Statement s = i.next();
+			statements.add(s);
+			if (OWL.onProperty.equals(s.getPredicate()))
+				statements.addAll(listAllStatementsOn(model, s.getSubject()));
+		}
+
+		if (resource.canAs(Property.class))
+			statements.addAll(model.listStatements(null, resource.as(Property.class), (RDFNode)null).toList());
+
+		return statements;
+    }
+
     public static Restriction getDirectRestriction(Resource resource, Property kind, Property property) {
 		for (RDFNode n : DTAUtilities.listObjects(resource, kind)) {
 			if (n.canAs(Restriction.class)) {

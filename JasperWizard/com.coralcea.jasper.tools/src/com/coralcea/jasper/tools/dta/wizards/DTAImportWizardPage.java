@@ -4,6 +4,7 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.resources.ResourcesPlugin;
 import org.eclipse.core.runtime.IAdaptable;
+import org.eclipse.core.runtime.Path;
 import org.eclipse.jface.dialogs.IDialogPage;
 import org.eclipse.jface.viewers.ArrayContentProvider;
 import org.eclipse.jface.viewers.ComboViewer;
@@ -20,32 +21,34 @@ import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
+import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
+import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.FileDialog;
 import org.eclipse.swt.widgets.Label;
+import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Text;
 
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
+import com.hp.hpl.jena.ontology.OntModel;
 
-public class DTALibraryWizardPage extends WizardPage {
+public abstract class DTAImportWizardPage extends WizardPage {
 
-	public static final String MULE_NATURE = "org.mule.tooling.core.muleNature";
-	
+	private static final String MULE_NATURE = "org.mule.tooling.core.muleNature";
+
 	private ComboViewer projectName;
-	private Text modelFile;
+	private Text filePath;
 	private Text modelName;
-	private Text modelNamespace;
+	private Button loadButton;
+	private OntModel loadedModel;
 	private IStructuredSelection selection;
 	
 	/**
 	 * Constructor for DTALibraryWizardPage.
-	 * 
-	 * @param pageName
 	 */
-	public DTALibraryWizardPage(IStructuredSelection selection) {
+	public DTAImportWizardPage(IStructuredSelection selection) {
 		super("wizardPage");
-		setTitle("Create a new DTA library");
-		setDescription("Create and configure a new DTA library.");
 		this.selection = selection;
 	}
 
@@ -54,7 +57,9 @@ public class DTALibraryWizardPage extends WizardPage {
 	 */
 	public void createControl(Composite parent) {
 		Composite container = new Composite(parent, SWT.NULL);
-		container.setLayout(new GridLayout(2, false));
+		GridLayout layout = new GridLayout(4, false);
+		layout.horizontalSpacing = 0;
+		container.setLayout(layout);
 		
 		Label label = new Label(container, SWT.NULL);
 		label.setText("Mule project:");
@@ -63,6 +68,7 @@ public class DTALibraryWizardPage extends WizardPage {
 		projectName = new ComboViewer(container, SWT.READ_ONLY);
 		projectName.setContentProvider(ArrayContentProvider.getInstance());
 		projectName.getCombo().setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		((GridData)projectName.getCombo().getLayoutData()).horizontalSpan = 3;
 		projectName.setLabelProvider(new LabelProvider() {
 			public String getText(Object element) {
 				return ((IProject)element).getName();
@@ -70,69 +76,59 @@ public class DTALibraryWizardPage extends WizardPage {
         });
 		projectName.addFilter(new ViewerFilter() {
 			public boolean select(Viewer viewer, Object parentElement, Object element) {
-				return DTAUtilities.hasNature((IProject)element, MULE_NATURE);
+				return DTAUtilities.hasNature((IProject)element, DTAImportWizardPage.MULE_NATURE);
 			}
 		});
 		projectName.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
-				IProject project = getProject();
-				if (project != null && getModelFile().length()==0)
-					modelFile.setText("Library1.dta");
 				dialogChanged();
 			}
 		});
 		projectName.setInput(ResourcesPlugin.getWorkspace().getRoot().getProjects());
         
 		label = new Label(container, SWT.NULL);
-		label.setText("Library file:");
-		label.setToolTipText("The unique name of the DTA library file");
-
-		modelFile = new Text(container, SWT.BORDER | SWT.SINGLE);
-		modelFile.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		modelFile.addModifyListener(new ModifyListener() {
-			public void modifyText(ModifyEvent e) {
-				String postfix = getModelFile().toLowerCase();
-				int index = postfix.lastIndexOf('.');
-				if (index >= 0)
-					postfix = postfix.substring(0, index);
-				String name = getModelName();
-				if (name.length()==0)
-					name = "http://mycompany.com/";
-				else
-					name = name.substring(0, name.lastIndexOf('/')+1);
-				modelName.setText(name+postfix);
-				dialogChanged();
-			}
-		});
-
-		label = new Label(container, SWT.NULL);
 		label.setText("Library name:");
-		label.setToolTipText("The unique name of the DTA library");
+		label.setToolTipText("The name of the DTA library");
 
 		modelName = new Text(container, SWT.BORDER | SWT.SINGLE);
 		modelName.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		((GridData)modelName.getLayoutData()).horizontalSpan = 3;
 		modelName.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
-				String name = getModelName();
-				String namespace = getModelNamespace();
-				if (namespace.length()==0)
-					modelNamespace.setText(name+"#");
-				else {
-					String separator = namespace.substring(namespace.length()-1);
-					modelNamespace.setText(name+separator);
-				}
 				dialogChanged();
 			}
 		});
 
-		label = new Label(container, SWT.NULL);
-		label.setText("Default namespace:");
-		label.setToolTipText("The default namespace of the DTA library");
+		label = createFileLabel(container);
 
-		modelNamespace = new Text(container, SWT.BORDER | SWT.SINGLE);
-		modelNamespace.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
-		modelNamespace.addModifyListener(new ModifyListener() {
+		filePath = new Text(container, SWT.BORDER | SWT.SINGLE);
+		filePath.setLayoutData(new GridData(GridData.FILL_HORIZONTAL));
+		filePath.addModifyListener(new ModifyListener() {
 			public void modifyText(ModifyEvent e) {
+				dialogChanged();
+				String path = new Path(filePath.getText()).removeFileExtension().lastSegment();
+				modelName.setText(path!=null ? path : "");
+				loadButton.setEnabled(path!=null);
+			}
+		});
+
+		Button browseButton = new Button(container, SWT.PUSH);
+		browseButton.setText("Browse...");
+		browseButton.addListener(SWT.Selection, new Listener() {
+			public void handleEvent(Event event) {
+				FileDialog dialog = new FileDialog(getShell(), SWT.OPEN);
+				String result = dialog.open();
+				if (result.length()>0)
+					filePath.setText(result);
+			}
+		});
+
+		loadButton = new Button(container, SWT.PUSH);
+		loadButton.setText("Load");
+		loadButton.setEnabled(false);
+		loadButton.addListener(SWT.Selection, new Listener() {
+			public void handleEvent(Event event) {
+				loadModel();
 				dialogChanged();
 			}
 		});
@@ -141,6 +137,8 @@ public class DTALibraryWizardPage extends WizardPage {
 		dialogChanged();
 		setControl(container);
 	}
+	
+	protected abstract Label createFileLabel(Composite parent);
 
 	/**
 	 * Tests if the current workbench selection is a suitable container to use.
@@ -154,7 +152,7 @@ public class DTALibraryWizardPage extends WizardPage {
 				obj = ((IAdaptable)obj).getAdapter(IResource.class);
 			if (obj instanceof IResource) {
 				IProject project = ((IResource) obj).getProject();
-				if (DTAUtilities.hasNature(project, MULE_NATURE))
+				if (DTAUtilities.hasNature(project, DTAImportWizardPage.MULE_NATURE))
 					projectName.setSelection(new StructuredSelection(project));
 			}
 		}
@@ -175,27 +173,25 @@ public class DTALibraryWizardPage extends WizardPage {
 			return;
 		}
 		
-		if (!getModelFile().endsWith("."+DTA.EXTENSION)) {
-			updateStatus("File must end with .dta");
-			return;
+		if (getOntologyPath().length()>0) {
+			if (!DTAUtilities.isValidFile(getOntologyPath())) {
+				loadButton.setEnabled(false);
+				updateStatus("Invalid file path");
+				return;
+			}
+			
+			if (getLoadedModel() == null) {
+				updateStatus("File must be (re)loaded");
+				return;
+			}
 		}
 
-		IResource model = project.findMember("src/main/app/"+getModelFile());
+		IResource model = project.findMember("src/main/app/"+getModelName()+"."+DTA.EXTENSION);
 		if (model != null && model.exists()) {
-			updateStatus("Library file already exists in this project");
+			updateStatus("DTA library already exists for this project");
 			return;
 		}
 		
-		if (!DTAUtilities.isValidURI(getModelName())) {
-			updateStatus("Invalid library name");
-			return;
-		}
-
-		if (getModelNamespace().length()>0 && !DTAUtilities.isValidNsURI(getModelNamespace())) {
-			updateStatus("Invalid library namespace");
-			return;
-		}
-
 		updateStatus(null);
 	}
 
@@ -208,16 +204,30 @@ public class DTALibraryWizardPage extends WizardPage {
 		return (IProject) ((IStructuredSelection)projectName.getSelection()).getFirstElement();
 	}
 
-	public String getModelFile() {
-		return modelFile.getText();
+	protected String getOntologyPath() {
+		return filePath.getText();
 	}
 
 	public String getModelName() {
 		return modelName.getText();
 	}
 
-	public String getModelNamespace() {
-		return modelNamespace.getText();
+	public OntModel getLoadedModel() {
+		return loadedModel;
 	}
 
+	protected void loadModel() {
+		unloadModel();
+		loadedModel = importFile(getOntologyPath());
+	}
+
+	protected void unloadModel() {
+		if (loadedModel!=null) {
+			loadedModel.close();
+			loadedModel = null;
+		}
+	}
+	
+	protected abstract OntModel importFile(String path);
+	
 }

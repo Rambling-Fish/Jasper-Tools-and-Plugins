@@ -19,4 +19,7 @@ Require-Bundle: org.eclipse.ui,
  org.eclipse.jdt.core
 Bundle-RequiredExecutionEnvironment: JavaSE-1.7
 Bundle-ActivationPolicy: lazy
-Bundle-ClassPath: .
+Bundle-ClassPath: .,
+ lib/ontmalizer-1.0.0.jar,
+ lib/xsom-20110809.jar,
+ lib/relaxngDatatype-20020414.jar

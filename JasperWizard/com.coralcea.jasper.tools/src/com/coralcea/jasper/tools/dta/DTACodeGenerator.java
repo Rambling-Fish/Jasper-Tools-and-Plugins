@@ -5,7 +5,6 @@ import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Map;
 import java.util.Set;
-import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IResource;
@@ -62,25 +61,25 @@ public class DTACodeGenerator {
 	private static final String BASE_PACKAGE = "base";
 
 	public static boolean run(final IFile file, IProgressMonitor monitor) throws CoreException {
-		if (!DTAModelValidator.run(file, new SubProgressMonitor(monitor, 3), true))
-			return false;
-		return generate(file, monitor);
-	}
-
-	public static boolean generate(final IFile file, IProgressMonitor monitor) {
 		monitor.beginTask("Generatign code", 10);
-		DTACodeGenerator generator = new DTACodeGenerator();
-		boolean error = generator.generateAll(file, new SubProgressMonitor(monitor, 7));
-		monitor.done();
-		if (error) {
+		
+		if (!DTAModelValidator.run(file, new SubProgressMonitor(monitor, 3), true)) {
+			monitor.done();
+			return false;
+		}
+
+		if (new DTACodeGenerator().generate(file, new SubProgressMonitor(monitor, 7))) {
 			Status status = new Status(Status.ERROR, Activator.PLUGIN_ID, "Errors were detected code generation. Please refer to the log for details.");
 			StatusManager.getManager().handle(status, StatusManager.BLOCK);
 			return false;
 		}
+		
 		return true;
 	}
 
-	private boolean generateAll(IFile file, IProgressMonitor monitor) {
+	private boolean generate(IFile file, IProgressMonitor monitor) {
+		monitor.beginTask("Generatign code", 10);
+
 		boolean error=false;
 
 		IResource container = file.getProject().findMember("src/main/java");
@@ -97,15 +96,6 @@ public class DTACodeGenerator {
 		} catch (CoreException e) {
 			Activator.getDefault().log("Failed to open DTA file", e);
 			return true;
-		}
-
-		Resource ontology = model.listOntologies().next();
-		String basePackage = DTAUtilities.getStringValue(ontology, DTA.basepackage);
-		final Pattern pattern = Pattern.compile("^[a-zA-Z_\\$][\\w\\$]*(?:\\.[a-zA-Z_\\$][\\w\\$]*)*$");
-		if (basePackage.length()>0 && !pattern.matcher(basePackage).matches()) {
-			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.ERROR, "The base package '"+basePackage+"' is invalid", null);
-			StatusManager.getManager().handle(status, StatusManager.BLOCK);
-			return false;
 		}
 
 		Set<String> packages = new HashSet<String>();
@@ -204,7 +194,7 @@ public class DTACodeGenerator {
 		namespaces.add(property.getNameSpace());
 		
 		Resource ptype = property.getPropertyResourceValue(RDFS.range);
-		if (!DTAUtilities.isDatatype(ptype))
+		if (ptype != null && !DTAUtilities.isDatatype(ptype))
 			collectType(ptype, packages, types, namespaces);
 	}
 
@@ -1045,7 +1035,7 @@ public class DTACodeGenerator {
 	}
 	
 	private String getPackageName(Resource res) {
-		if (DTAUtilities.isDatatype(res))
+		if (res == null || DTAUtilities.isDatatype(res))
 			return "xsd";
 		String prefix = res.getModel().getNsURIPrefix(res.getNameSpace());
 		Resource ontology = ((OntModel)res.getModel()).listOntologies().next();
@@ -1056,21 +1046,23 @@ public class DTACodeGenerator {
 	}
 
 	private String getTypeName(Resource res) {
-		String name = res.getLocalName();
-		name = toTitleCase(name);
-		if (getPackageName(res).equals("xsd")) {
-			if (name.equals("Integer"))
-				name = "int";
-			else if (name.equals("Boolean"))
-				name = "boolean";
-			else if (name.equals("Date"))
-				name = "java.util.Date";
-			else if (name.equals("Decimal"))
-				name = "double";
-			else if (name.equals("Literal"))
-				name = "String";
-		} 
-		return name;
+		if (res == null || RDFS.Literal.equals(res))
+			return "Object";
+		if (XSD.getURI().equalsIgnoreCase(res.getNameSpace())) {
+			if (XSD.integer.equals(res))
+				return "int";
+			if (XSD.decimal.equals(res))
+				return "double";
+			if (XSD.xboolean.equals(res))
+				return "boolean";
+			if (XSD.dateTime.equals(res) || XSD.time.equals(res) || XSD.date.equals(res))
+				return "java.util.Calendar";
+			if (XSD.duration.equals(res))
+				return "javax.xml.datatype.Duration";
+			if (XSD.hexBinary.equals(res))
+				return "byte[]";
+		}
+		return toTitleCase(res.getLocalName());
 	}
 
 	private String getFieldName(Resource res, boolean qualified) {
@@ -1082,7 +1074,7 @@ public class DTACodeGenerator {
 	private String getGetterName(Resource res, boolean qualified) {
 		String name = res.getLocalName();
 		Resource type = res.getPropertyResourceValue(RDFS.range);
-		String prefix = type.equals(XSD.xboolean) ? "is" : "get";
+		String prefix = (type != null && type.equals(XSD.xboolean)) ? "is" : "get";
 		prefix = name.startsWith(prefix) ? "" : prefix;
 		String postfix = qualified ? "_"+getPackageName(res) : "";
 		return prefix+toTitleCase(name)+postfix;

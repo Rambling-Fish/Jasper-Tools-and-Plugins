@@ -30,7 +30,7 @@ public class ChangeCardinalityCommand extends DTACommand {
 	public void prepare() {
 		Restriction r = DTAUtilities.getDirectRestriction(element, kind, property);
 		if (r!=null)
-			oldRestriction = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
+			oldRestriction = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		
 		r = null;
 		if (value.equals(Cardinality.ZERO_ONE))
@@ -41,7 +41,7 @@ public class ChangeCardinalityCommand extends DTACommand {
 			r = element.getOntModel().createCardinalityRestriction(null, property, 1);
 		if (r!=null) {
 			element.addProperty(kind, r);
-			newRestriction = DTAUtilities.listStatementsOn(element.getOntModel().getBaseModel(), r);
+			newRestriction = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		}
 	}
 

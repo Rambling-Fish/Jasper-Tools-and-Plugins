@@ -6,10 +6,13 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
 import java.util.ArrayList;
+import java.util.Calendar;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+
+import javax.xml.datatype.Duration;
 
 import org.apache.log4j.Logger;
 import org.mule.api.lifecycle.Callable;
@@ -305,23 +308,25 @@ public class JasperMetadata extends JasperConstants {
 	}
 
 	private String getTypeName(Resource res) {
-		String name = res.getLocalName();
-		name = toTitleCase(name);
-		if (getPackageName(res).equals("xsd")) {
-			if (name.equals("Integer"))
-				name = "java.lang.Integer";
-			else if (name.equals("Boolean"))
-				name = "java.lang.Boolean";
-			else if (name.equals("String"))
-				name = "java.lang.String";
-			else if (name.equals("Decimal"))
-				name = "java.lang.Double";
-			else if (name.equals("Date"))
-				name = "java.util.Date";
-			else if (name.equals("Literal"))
-				name = "java.lang.String";
-		} 
-		return name;
+		if (res == null || RDFS.Literal.equals(res))
+			return Object.class.getName();
+		if (XSD.getURI().equalsIgnoreCase(res.getNameSpace())) {
+			if (XSD.xstring.equals(res))
+				return String.class.getName();
+			if (XSD.integer.equals(res))
+				return Integer.class.getName();
+			if (XSD.decimal.equals(res))
+				return Double.class.getName();
+			if (XSD.xboolean.equals(res))
+				return Boolean.class.getName();
+			if (XSD.dateTime.equals(res) || XSD.time.equals(res) || XSD.date.equals(res))
+				return Calendar.class.getName();
+			if (XSD.duration.equals(res))
+				return Duration.class.getName();
+			if (XSD.hexBinary.equals(res))
+				return byte[].class.getName();
+		}
+		return toTitleCase(res.getLocalName());
 	}
 
 	private String toTitleCase(String s) {
