@@ -1049,6 +1049,8 @@ public class DTACodeGenerator {
 		if (res == null || RDFS.Literal.equals(res))
 			return "Object";
 		if (XSD.getURI().equalsIgnoreCase(res.getNameSpace())) {
+			if (XSD.xstring.equals(res))
+				return "String";
 			if (XSD.integer.equals(res))
 				return "int";
 			if (XSD.decimal.equals(res))
