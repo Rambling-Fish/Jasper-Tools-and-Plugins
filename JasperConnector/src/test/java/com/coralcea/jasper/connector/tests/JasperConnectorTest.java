@@ -66,6 +66,7 @@ public class JasperConnectorTest extends FunctionalTestCase {
 	private static final String ADDRESS = "tcp://0.0.0.0:61616";
 	
 	private static BrokerService broker;
+	private static ObjectMapper mapper;
 
 	@Override
 	protected String getConfigResources() {
@@ -85,7 +86,10 @@ public class JasperConnectorTest extends FunctionalTestCase {
 		} catch (Exception e) {
 			log.error(e.getMessage());
 		}
-		
+
+		mapper = new ObjectMapper();
+		mapper.setSerializationInclusion(Inclusion.NON_NULL);
+
 		MuleContext context = super.createMuleContext();
     	context.getRegistry().registerObject(
         		MuleProperties.APP_HOME_DIRECTORY_PROPERTY, 
@@ -119,74 +123,8 @@ public class JasperConnectorTest extends FunctionalTestCase {
     	
 		Model submodel = ModelFactory.createDefaultModel();
 		submodel.read(new ByteArrayInputStream(result[0].getBytes()), null, JasperConstants.DTA_FORMAT);
-    	Assert.assertEquals(78, submodel.listStatements().toList().size());
+    	Assert.assertEquals(77, submodel.listStatements().toList().size());
     }
-
-    @Test
-    public void testUpdateHRData() throws Exception
-    {
-    	final TestConnection connection = new TestConnection();
-   	
-		Consumer JasperCore = new Consumer(connection, JasperConstants.GLOBAL_QUEUE);
-		JasperCore.setMessageListener(new MessageListener() {
-			public void onMessage(Message message) {
-				try {
-					final ObjectMapper mapper = new ObjectMapper();
-					mapper.setSerializationInclusion(Inclusion.NON_NULL);
-
-					String text = ((TextMessage)message).getText();
-					JsonNode parameters = new JsonData(text).get("parameters");
-					UpdateHRData.Parameters receivedRequest = mapper.readValue(parameters.toString(), UpdateHRData.Parameters.class);
-
-					HRUpdateReq requestToForward = new HRUpdateReqImpl();
-					requestToForward.setSid(receivedRequest.getSid());
-					requestToForward.setHrData(receivedRequest.getHrData());
-					
-					final Queue replyTo = (Queue) message.getJMSReplyTo();
-					Consumer consumer = new Consumer(connection, "Queue1Response");
-					consumer.setMessageListener(new MessageListener() {
-						public void onMessage(Message message) {
-							try {
-								Producer producer = new Producer(connection, replyTo);
-						    	String text = mapper.writeValueAsString(createResonse(message));
-								producer.send(producer.createTextMessage(text, message.getJMSCorrelationID(), null));
-							} catch (Exception e) {
-								Assert.assertFalse(e.getMessage(), false);
-							}
-						}
-					});
-
-					Producer producer = new Producer(connection, "Queue1");
-					String payload = mapper.writeValueAsString(requestToForward);
-					String correlationID = message.getJMSCorrelationID();
-					producer.send(producer.createTextMessage(payload, correlationID, consumer.getQueue()));
-				} catch (Exception e) {
-					Assert.assertFalse(e.getMessage(), false);
-				}
-			}
-		});
-		
-		Map<String, Object> properties = new HashMap<String, Object>();
-		properties.put("sid", "400");
-		properties.put("bpm", "400");
-		properties.put("timestamp", "400:400:400");
-
-		UpdateHRData.Parameters request = new UpdateHRData.Parameters();
-		request.setSid((String)properties.get("sid"));
-		HRData hrData = new HRDataImpl();
-		hrData.setBpm(Integer.valueOf((String)properties.get("bpm")));
-		hrData.setTimestamp((String)properties.get("timestamp"));
-		request.setHrData(hrData);
-
-    	HRDataCache.getInstance().reset();
-
-		connection.start();
-    	runFlowAndExpect("testUpdateHRData", null, properties, request);
-		Thread.sleep(1000);
-    	connection.stop();
-
-		Assert.assertEquals(HRDataCache.getInstance().get("400"), hrData);
-   }
 
     @Test
     public void testRequestMSData() throws Exception
@@ -197,12 +135,9 @@ public class JasperConnectorTest extends FunctionalTestCase {
 		jasperCore.setMessageListener(new MessageListener() {
 			public void onMessage(Message message) {
 				try {
-					final ObjectMapper mapper = new ObjectMapper();
-					mapper.setSerializationInclusion(Inclusion.NON_NULL);
-					
 					String text = ((TextMessage)message).getText();
 					JsonNode parameters = new JsonData(text).get("parameters");
-					RequestMSData.Parameters receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameters.class);
+					RequestMSData.Parameter receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameter.class);
 
 					HRDataReq requestToForward = new HRDataReqImpl();
 					requestToForward.setSid(receivedRequest.getSid());
@@ -243,6 +178,119 @@ public class JasperConnectorTest extends FunctionalTestCase {
     }
 
     @Test
+    public void testUpdateHRData() throws Exception
+    {
+    	final TestConnection connection = new TestConnection();
+   	
+		Consumer JasperCore = new Consumer(connection, JasperConstants.GLOBAL_QUEUE);
+		JasperCore.setMessageListener(new MessageListener() {
+			public void onMessage(Message message) {
+				try {
+					String text = ((TextMessage)message).getText();
+					JsonNode parameters = new JsonData(text).get("parameters");
+					UpdateHRData.Parameter receivedRequest = mapper.readValue(parameters.toString(), UpdateHRData.Parameter.class);
+
+					HRUpdateReq requestToForward = new HRUpdateReqImpl();
+					requestToForward.setSid(receivedRequest.getSid());
+					requestToForward.setHrData(receivedRequest.getHrData());
+					
+					final Queue replyTo = (Queue) message.getJMSReplyTo();
+					Consumer consumer = new Consumer(connection, "Queue1Response");
+					consumer.setMessageListener(new MessageListener() {
+						public void onMessage(Message message) {
+							try {
+								Producer producer = new Producer(connection, replyTo);
+						    	String text = mapper.writeValueAsString(createResonse(message));
+								producer.send(producer.createTextMessage(text, message.getJMSCorrelationID(), null));
+							} catch (Exception e) {
+								Assert.assertFalse(e.getMessage(), false);
+							}
+						}
+					});
+
+					Producer producer = new Producer(connection, "Queue1");
+					String payload = mapper.writeValueAsString(requestToForward);
+					String correlationID = message.getJMSCorrelationID();
+					producer.send(producer.createTextMessage(payload, correlationID, consumer.getQueue()));
+				} catch (Exception e) {
+					Assert.assertFalse(e.getMessage(), false);
+				}
+			}
+		});
+		
+		Map<String, Object> properties = new HashMap<String, Object>();
+		properties.put("sid", "400");
+		properties.put("bpm", "400");
+		properties.put("timestamp", "400:400:400");
+
+		UpdateHRData.Parameter request = new UpdateHRData.Parameter();
+		request.setSid((String)properties.get("sid"));
+		HRData hrData = new HRDataImpl();
+		hrData.setBpm(Integer.valueOf((String)properties.get("bpm")));
+		hrData.setTimestamp((String)properties.get("timestamp"));
+		request.setHrData(hrData);
+
+    	HRDataCache.getInstance().reset();
+
+		connection.start();
+    	runFlowAndExpect("testUpdateHRData", null, properties, request);
+		Thread.sleep(1000);
+    	connection.stop();
+
+		Assert.assertEquals(HRDataCache.getInstance().get("400"), hrData);
+   }
+
+    @Test
+    public void testRequestBpm() throws Exception
+    {
+    	final TestConnection connection = new TestConnection();
+   	
+		Consumer jasperCore = new Consumer(connection, JasperConstants.GLOBAL_QUEUE);
+		jasperCore.setMessageListener(new MessageListener() {
+			public void onMessage(Message message) {
+				try {
+					String text = ((TextMessage)message).getText();
+					JsonNode parameters = new JsonData(text).get("parameters");
+					RequestMSData.Parameter receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameter.class);
+
+					HRDataReq requestToForward = new HRDataReqImpl();
+					requestToForward.setSid(receivedRequest.getSid());
+					
+					final Queue replyTo = (Queue) message.getJMSReplyTo();
+					Consumer consumer = new Consumer(connection, "Queue3Response");
+					consumer.setMessageListener(new MessageListener() {
+						public void onMessage(Message message) {
+							try {
+								Producer producer = new Producer(connection, replyTo);
+						    	String text = mapper.writeValueAsString(createResonse(message));
+								producer.send(producer.createTextMessage(text, message.getJMSCorrelationID(), null));
+							} catch (Exception e) {
+								Assert.assertFalse(e.getMessage(), false);
+							}
+						}
+					});
+					
+					Producer producer = new Producer(connection, "Queue3");
+					String payload = mapper.writeValueAsString(requestToForward);
+					String correlationID = message.getJMSCorrelationID();
+					producer.send(producer.createTextMessage(payload, correlationID, consumer.getQueue()));
+				} catch (Exception e) {
+					Assert.assertFalse(e.getMessage(), false);
+				}
+			}
+		});
+		
+		Map<String, Object> properties = new HashMap<String, Object>();
+		properties.put("sid", "600");
+
+    	HRDataCache.getInstance().reset();
+
+    	connection.start();
+    	runFlowAndExpect("testRequestBpm", null, properties, 300);
+    	connection.stop();
+    }
+
+    @Test
     public void testPublishHRData() throws Exception
     {
     	final TestConnection connection = new TestConnection();
@@ -257,17 +305,14 @@ public class JasperConnectorTest extends FunctionalTestCase {
 				pool.execute(new Runnable() {
 					public void run() {
 						try {
-							final ObjectMapper mapper = new ObjectMapper();
-							mapper.setSerializationInclusion(Inclusion.NON_NULL);
-
 							String text = ((TextMessage)message).getText();
-							JasperRequest request = mapper.readValue(text,JasperRequest.class);
-							
-							if (request.getRuri().equals("http://coralcea.ca/heartratedta#hrData")) {
+							JsonNode method = new JsonData(text).get("method");
+							if (method.asText().equals(JasperConstants.DTA_Get.getLocalName().toUpperCase())) {
 								JsonNode parameters = new JsonData(text).get("parameters");
-								RequestMSData.Parameters receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameters.class);
+								RequestMSData.Parameter receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameter.class);
 								
 								synchronized (lock) {
+									JasperRequest request = mapper.readValue(text,JasperRequest.class);
 									String expires = request.getHeaders().get(JasperConstants.EXPIRES);
 									int timeout = Integer.valueOf(expires);
 									lock.wait(timeout*1000);
@@ -279,9 +324,9 @@ public class JasperConnectorTest extends FunctionalTestCase {
 							    	String response = mapper.writeValueAsString(createResonse(mapper.writeValueAsString(hrData)));
 									producer.send(producer.createTextMessage(response, message.getJMSCorrelationID(), null));
 								}
-							} else {
+							} else if (method.asText().equals(JasperConstants.DTA_Publish.getLocalName().toUpperCase())) {
 								JsonNode parameters = new JsonData(text).get("parameters");
-								PublishHRData.Parameters receivedRequest = mapper.readValue(parameters.toString(), PublishHRData.Parameters.class);
+								PublishHRData.Parameter receivedRequest = mapper.readValue(parameters.toString(), PublishHRData.Parameter.class);
 								sid = receivedRequest.getSid();
 								hrData = receivedRequest.getHrData();
 								synchronized (lock) {
@@ -305,7 +350,7 @@ public class JasperConnectorTest extends FunctionalTestCase {
 				properties.put("bpm", "400");
 				properties.put("timestamp", "400:400:400");
 
-				PublishHRData.Parameters request = new PublishHRData.Parameters();
+				PublishHRData.Parameter request = new PublishHRData.Parameter();
 				request.setSid((String)properties.get("sid"));
 				HRData hrData = new HRDataImpl();
 				hrData.setBpm(Integer.valueOf((String)properties.get("bpm")));
@@ -349,57 +394,58 @@ public class JasperConnectorTest extends FunctionalTestCase {
     }
 
     @Test
-    public void testRequestBpm() throws Exception
+    public void testSubscribeHRData() throws Exception
     {
     	final TestConnection connection = new TestConnection();
    	
-		Consumer jasperCore = new Consumer(connection, JasperConstants.GLOBAL_QUEUE);
-		jasperCore.setMessageListener(new MessageListener() {
+		Consumer JasperCore = new Consumer(connection, JasperConstants.GLOBAL_QUEUE);
+		JasperCore.setMessageListener(new MessageListener() {
+			private Queue replyTo;
 			public void onMessage(Message message) {
 				try {
-					final ObjectMapper mapper = new ObjectMapper();
-					mapper.setSerializationInclusion(Inclusion.NON_NULL);
-
 					String text = ((TextMessage)message).getText();
-					JsonNode parameters = new JsonData(text).get("parameters");
-					RequestMSData.Parameters receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameters.class);
-
-					HRDataReq requestToForward = new HRDataReqImpl();
-					requestToForward.setSid(receivedRequest.getSid());
-					
-					final Queue replyTo = (Queue) message.getJMSReplyTo();
-					Consumer consumer = new Consumer(connection, "Queue3Response");
-					consumer.setMessageListener(new MessageListener() {
-						public void onMessage(Message message) {
-							try {
-								Producer producer = new Producer(connection, replyTo);
-						    	String text = mapper.writeValueAsString(createResonse(message));
-								producer.send(producer.createTextMessage(text, message.getJMSCorrelationID(), null));
-							} catch (Exception e) {
-								Assert.assertFalse(e.getMessage(), false);
-							}
-						}
-					});
-					
-					Producer producer = new Producer(connection, "Queue3");
-					String payload = mapper.writeValueAsString(requestToForward);
-					String correlationID = message.getJMSCorrelationID();
-					producer.send(producer.createTextMessage(payload, correlationID, consumer.getQueue()));
+					JsonNode method = new JsonData(text).get("method");
+					if (method.asText().equals(JasperConstants.DTA_Subscribe.getLocalName().toUpperCase())) {
+						replyTo = (Queue) message.getJMSReplyTo();
+					} else {
+						JsonNode parameters = new JsonData(text).get("parameters");
+						PublishHRData.Parameter receivedRequest = mapper.readValue(parameters.toString(), PublishHRData.Parameter.class);
+	
+						// payload to forward to subscriber
+						HRData hrData = receivedRequest.getHrData();
+						
+						Producer producer = new Producer(connection, replyTo);
+						String payload = mapper.writeValueAsString(hrData);
+						String correlationID = message.getJMSCorrelationID();
+						producer.send(producer.createTextMessage(payload, correlationID, null));
+					}
 				} catch (Exception e) {
 					Assert.assertFalse(e.getMessage(), false);
 				}
 			}
 		});
 		
-		Map<String, Object> properties = new HashMap<String, Object>();
-		properties.put("sid", "600");
+    	Map<String, Object> properties = new HashMap<String, Object>();
+		properties.put("sid", "500");
+		properties.put("bpm", "500");
+		properties.put("timestamp", "500:500:500");
+
+		PublishHRData.Parameter request = new PublishHRData.Parameter();
+		request.setSid((String)properties.get("sid"));
+		HRData hrData = new HRDataImpl();
+		hrData.setBpm(Integer.valueOf((String)properties.get("bpm")));
+		hrData.setTimestamp((String)properties.get("timestamp"));
+		request.setHrData(hrData);
 
     	HRDataCache.getInstance().reset();
 
-    	connection.start();
-    	runFlowAndExpect("testRequestBpm", null, properties, 300);
+		connection.start();
+    	runFlowAndExpect("testPublishHRData", null, properties, request);
+		Thread.sleep(1000);
     	connection.stop();
-    }
+
+		Assert.assertEquals(HRDataCache.getInstance().get("500"), hrData);
+   }
 
     /*****************************************************************************/
   

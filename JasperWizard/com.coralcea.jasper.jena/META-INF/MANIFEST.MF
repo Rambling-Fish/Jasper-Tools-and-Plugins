@@ -13,8 +13,7 @@ Bundle-ClassPath: apache-jena-2.11.0/lib/commons-codec-1.6.jar,
  apache-jena-2.11.0/lib/jena-core-2.11.0.jar,
  apache-jena-2.11.0/lib/jena-iri-1.0.0.jar,
  apache-jena-2.11.0/lib/jena-sdb-1.4.0.jar,
- apache-jena-2.11.0/lib/jena-tdb-1.0.0.jar,
- apache-jena-2.11.0/lib/log4j-1.2.16.jar
+ apache-jena-2.11.0/lib/jena-tdb-1.0.0.jar
 Export-Package: com.hp.hpl.jena,
  com.hp.hpl.jena.assembler,
  com.hp.hpl.jena.assembler.assemblers,

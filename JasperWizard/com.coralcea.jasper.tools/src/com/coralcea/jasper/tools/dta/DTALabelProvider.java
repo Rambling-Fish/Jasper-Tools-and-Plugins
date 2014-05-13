@@ -50,16 +50,16 @@ public class DTALabelProvider extends LabelProvider {
 			OntResource range = modelElement.as(OntProperty.class).getRange();
 			text += (range != null) ? " : "+ DTAUtilities.getLabel(range) : "";
 		} else if (DTAUtilities.isOperation(modelElement) || DTAUtilities.isRequest(modelElement)) {
-			Property input = DTAUtilities.getPropertyResourceValue(modelElement, DTA.input, Property.class);
-			Property output = DTAUtilities.getPropertyResourceValue(modelElement, DTA.output, Property.class);
-			OntClass outputType = (output != null) ? DTAUtilities.getPropertyResourceValue(output, RDFS.range, OntClass.class) : null;
-			Restriction restriction = DTAUtilities.getDirectRestriction(modelElement, DTA.outputRestriction, output);
+			Property parameter = DTAUtilities.getPropertyResourceValue(modelElement, DTA.parameter, Property.class);
+			Property data = DTAUtilities.getPropertyResourceValue(modelElement, DTA.data, Property.class);
+			OntClass dataType = (data != null) ? DTAUtilities.getPropertyResourceValue(data, RDFS.range, OntClass.class) : null;
+			Restriction restriction = DTAUtilities.getDirectRestriction(modelElement, DTA.dataRestriction, data);
 
-			String inputs = (input!=null) ? " ("+DTAUtilities.getLabel(input)+")" : " ()"; 
-			String outputs = (outputType!=null) ? " : "+DTAUtilities.getLabel(outputType) : "";
-			String cardinality = (output!=null) ? " "+DTAUtilities.getCardinality(restriction) : "";
+			String parameterStr = (parameter!=null) ? " ("+DTAUtilities.getLabel(parameter)+")" : " ()"; 
+			String dataStr = (dataType!=null) ? " : "+DTAUtilities.getLabel(dataType) : "";
+			String cardinality = (data!=null) ? " "+DTAUtilities.getCardinality(restriction) : "";
 			
-			text += inputs+outputs+cardinality;
+			text += parameterStr+dataStr+cardinality;
 		}
 		return text;
 	}

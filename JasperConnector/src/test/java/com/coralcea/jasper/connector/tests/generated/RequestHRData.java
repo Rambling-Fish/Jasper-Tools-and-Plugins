@@ -12,20 +12,20 @@ public class RequestHRData implements Callable {
 
 	/**
 	 * @param muleEventContext
-	 * @return Parameters
+	 * @return Parameter
 	 */
-	@Generated("true")
-	public Parameters onCall(MuleEventContext muleEventContext) throws Exception {
-		Parameters parameters = new Parameters();
-		parameters.setSid((String) muleEventContext.getMessage().getInboundProperty("sid"));
-		return parameters;
+	@Generated("false")
+	public Parameter onCall(MuleEventContext muleEventContext) throws Exception {
+		Parameter parameter = new Parameter();
+		parameter.setSid((String) muleEventContext.getMessage().getInboundProperty("sid"));
+		return parameter;
 	}
 
 	/**
-	 * The parameters of {@link RequestHRData}
+	 * The parameter of {@link RequestHRData}
 	 */
 	@Generated("true")
-	public static class Parameters {
+	public static class Parameter {
 
 		@Generated("true")
 		@JsonProperty("http://coralcea.ca/heartratedta#sid")
@@ -67,7 +67,7 @@ public class RequestHRData implements Callable {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			Parameters other = (Parameters) obj;
+			Parameter other = (Parameter) obj;
 			if (sid == null) {
 				if (other.sid != null)
 					return false;
@@ -79,7 +79,7 @@ public class RequestHRData implements Callable {
 		@Override
 		@Generated("true")
 		public String toString() {
-			return "Parameters [ " + "sid=" + sid + " ]";
+			return "Parameter [ " + "sid=" + sid + " ]";
 		}
 	}
 }

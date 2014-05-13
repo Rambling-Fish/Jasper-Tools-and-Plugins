@@ -92,7 +92,7 @@ public class DTABrowseDiagramEditPart extends DTAResourceNodeEditPart  {
 		
 		StmtIterator i = DTAUtilities.listStatementsOfPredicates(model.getBaseModel(), new Property[]{
 			RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range, OWL.equivalentProperty, 
-			DTA.operation, DTA.request,	DTA.input, DTA.output
+			DTA.operation, DTA.request,	DTA.parameter, DTA.data
 		});
 		while (i.hasNext()) {
 			Statement s = i.next();
@@ -112,7 +112,7 @@ public class DTABrowseDiagramEditPart extends DTAResourceNodeEditPart  {
 				continue;
 			if ("Associations".equals(filter) && !RDFS.domain.equals(s.getPredicate()) && !RDFS.range.equals(s.getPredicate()))
 				continue;
-			if ("Operations".equals(filter) && !DTA.operation.equals(s.getPredicate()) && !DTA.request.equals(s.getPredicate()) && !DTA.input.equals(s.getPredicate()) && !DTA.output.equals(s.getPredicate()))
+			if ("Operations".equals(filter) && !DTA.operation.equals(s.getPredicate()) && !DTA.request.equals(s.getPredicate()) && !DTA.parameter.equals(s.getPredicate()) && !DTA.data.equals(s.getPredicate()))
 				continue;
 			if (model.getOntResource(filter) != null) {
 				Object element = model.getOntResource(filter);

@@ -6,9 +6,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.resources.IProject;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
-import org.eclipse.core.runtime.IStatus;
 import org.eclipse.core.runtime.Path;
-import org.eclipse.core.runtime.Status;
 import org.eclipse.jface.dialogs.MessageDialog;
 import org.eclipse.jface.operation.IRunnableWithProgress;
 import org.eclipse.jface.viewers.IStructuredSelection;
@@ -19,8 +17,7 @@ import org.eclipse.ui.IWorkbenchPage;
 import org.eclipse.ui.IWorkbenchWizard;
 import org.eclipse.ui.PartInitException;
 import org.eclipse.ui.PlatformUI;
-import org.eclipse.ui.part.FileEditorInput;
-import org.eclipse.ui.progress.UIJob;
+import org.eclipse.ui.ide.IDE;
 
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.dta.DTA;
@@ -68,7 +65,7 @@ public class DTAImportWizard extends Wizard implements IImportWizard {
 			}
 		};
 		try {
-			getContainer().run(true, false, op);
+			getContainer().run(false, false, op);
 		} catch (InterruptedException e) {
 			return false;
 		} catch (InvocationTargetException e) {
@@ -97,20 +94,19 @@ public class DTAImportWizard extends Wizard implements IImportWizard {
 		
 		updatePolicy(project, modelURI, modelName);
 		
-		new UIJob("Open DATA Library") {
-			public IStatus runInUIThread(IProgressMonitor monitor) {
-				try {
-				    IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
-				    page.openEditor(new FileEditorInput(file), DTAEditor.ID);
-					return Status.OK_STATUS;						
-				} catch (PartInitException e) {
-					Activator.getDefault().log("Failed to open DTA editor", e);
-					return Status.CANCEL_STATUS;						
-				}
-			}
-		}.schedule();
-		
-		monitor.done();
+        //selectAndReveal(file);
+
+        // Open editor on new file.
+        IWorkbenchPage page = PlatformUI.getWorkbench().getActiveWorkbenchWindow().getActivePage();
+        try {
+            if (page != null) {
+                IDE.openEditor(page, file, DTAEditor.ID);
+            }
+        } catch (PartInitException e) {
+			Activator.getDefault().log("Failed to open DTA editor", e);
+        }
+
+        monitor.done();
 	}
 	
 	private void updatePolicy(IProject project,  String modelURI, String modelName) {

@@ -90,15 +90,15 @@ public class DTAStatementEditPart extends DTAConnectionEditPart {
 		if (p.equals(RDFS.range))
 			return "ofType";
 		if (p.equals(RDFS.domain))
-			return "hasProperty";
-		if (p.equals(DTA.output))
-			return "hasOutput";
-		if (p.equals(DTA.input))
-			return "hasInput";
+			return "property";
+		if (p.equals(DTA.data))
+			return "data";
+		if (p.equals(DTA.parameter))
+			return "parameter";
 		if (p.equals(DTA.operation))
-			return "hasOperation";
+			return "operation";
 		if (p.equals(DTA.request))
-			return "hasRequest";
+			return "request";
 		return p.getLocalName();
 	}
 

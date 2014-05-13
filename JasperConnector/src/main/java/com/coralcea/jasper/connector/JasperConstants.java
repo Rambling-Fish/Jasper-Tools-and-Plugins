@@ -26,15 +26,22 @@ public class JasperConstants {
 	public static final String GET = "GET";
 	public static final String POST = "POST";
 	public static final String PUBLISH = "PUBLISH";
+	public static final String SUBSCRIBE = "SUBSCRIBE";
 
 	// DTA metadata
 	public static final Resource DTA_DTA = resource("DTA");
+	public static final Resource DTA_Operation = resource("Operation");
+	public static final Resource DTA_Request = resource("Request");
+	public static final Resource DTA_Get = resource("Get");
+	public static final Resource DTA_Post = resource("Post");
 	public static final Resource DTA_Publish = resource("Publish");
+	public static final Resource DTA_Subscribe = resource("Subscribe");
+	
 	public static final Property DTA_operation = property("operation");
 	public static final Property DTA_request = property("request");
-	public static final Property DTA_input = property("input");
-	public static final Property DTA_output = property("output");
-	public static final Property DTA_outputRestriction = property("outputRestriction");
+	public static final Property DTA_parameter = property("parameter");
+	public static final Property DTA_data = property("data");
+	public static final Property DTA_dataRestriction = property("dataRestriction");
 	public static final Property DTA_kind = property("kind");
 	public static final Property DTA_rule = property("rule");
 	public static final Property DTA_destination = property("destination");

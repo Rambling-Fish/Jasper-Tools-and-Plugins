@@ -134,7 +134,7 @@ public abstract class DTAViewer extends Viewer {
 
 		action = new Action("Download Model") {
 			public void run() {
-				DTADownloadJasperModel.run(getEditor());
+				DTADownloadJasperModelDialog.run(getEditor().getSite().getShell(), getEditor());
 			}
 		};
 		action.setToolTipText("Download Jasper model");

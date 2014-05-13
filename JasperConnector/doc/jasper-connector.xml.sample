@@ -2,6 +2,14 @@
     <jasper:send request="Request URI" exchangePattern="request_response" timeout="10000"/>
 <!-- END_INCLUDE(jasper:send) -->
 
+<!-- BEGIN_INCLUDE(jasper:publish) -->
+    <jasper:publish operation="Operation URI"/>
+<!-- END_INCLUDE(jasper:publish) -->
+
 <!-- BEGIN_INCLUDE(jasper:execute) -->
     <jasper:execute operation="Operation URI" />
 <!-- END_INCLUDE(jasper:execute) -->
+
+<!-- BEGIN_INCLUDE(jasper:subscribe) -->
+    <jasper:subscribe request="Request URI" />
+<!-- END_INCLUDE(jasper:subscribe) -->

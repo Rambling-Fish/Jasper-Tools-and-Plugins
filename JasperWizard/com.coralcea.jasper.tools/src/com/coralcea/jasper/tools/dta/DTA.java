@@ -25,6 +25,7 @@ public class DTA {
 	public static final Resource Get = resource("Get");
 	public static final Resource Post = resource("Post");
 	public static final Resource Publish = resource("Publish");
+	public static final Resource Subscribe = resource("Subscribe");
 	
 	public static final Property isLibrary = property("isLibrary");
 	public static final Property operation = property("operation");
@@ -32,13 +33,13 @@ public class DTA {
 	public static final Property kind = property("kind");
 	public static final Property rule = property("rule");
 	public static final Property expires = property("expires");
-	public static final Property input = property("input");
-	public static final Property output = property("output");
 	public static final Property destination = property("destination");
 	public static final Property basepackage = property("basepackage");
+	public static final Property parameter = property("parameter");
+	public static final Property data = property("data");
 	public static final Property restriction = property("restriction");
-	public static final Property inputRestriction = property("inputRestriction");
-	public static final Property outputRestriction = property("outputRestriction");
+	public static final Property parameterRestriction = property("parameterRestriction");
+	public static final Property dataRestriction = property("dataRestriction");
 
     private static final Resource resource( String local ){ 
     	return ResourceFactory.createResource( URI + local ); 

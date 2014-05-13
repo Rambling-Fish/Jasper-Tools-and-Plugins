@@ -22,30 +22,30 @@
         dta:x            "504"^^xsd:int ;
         dta:y            "15"^^xsd:int .
 
-:requestHRData  a              dta:Request ;
-        dta:expires            "10"^^xsd:int ;
-        dta:input              :HRDataReq ;
-        dta:kind               dta:Get ;
-        dta:output             :hrData ;
-        dta:outputRestriction  [ a                owl:Restriction ;
-                                 owl:cardinality  "1"^^xsd:int ;
-                                 owl:onProperty   :hrData
-                               ] .
+:requestHRData  a            dta:Request ;
+        dta:data             :hrData ;
+        dta:dataRestriction  [ a                owl:Restriction ;
+                               owl:cardinality  "1"^^xsd:int ;
+                               owl:onProperty   :hrData
+                             ] ;
+        dta:expires          "10"^^xsd:int ;
+        dta:kind             dta:Get ;
+        dta:parameter        :HRDataReq .
 
-:requestMSData  a   dta:Request ;
-        dta:input   :MSDataReq ;
-        dta:kind    dta:Get ;
-        dta:output  :msData .
+:requestMSData  a      dta:Request ;
+        dta:data       :msData ;
+        dta:kind       dta:Get ;
+        dta:parameter  :MSDataReq .
 
-:getBpm  a                     dta:Operation ;
-        dta:destination        "Queue3"^^xsd:string ;
-        dta:input              :HRDataReq ;
-        dta:kind               dta:Get ;
-        dta:output             :bpm ;
-        dta:outputRestriction  [ a                owl:Restriction ;
-                                 owl:cardinality  "1"^^xsd:int ;
-                                 owl:onProperty   :bpm
-                               ] .
+:getBpm  a                   dta:Operation ;
+        dta:data             :bpm ;
+        dta:dataRestriction  [ a                owl:Restriction ;
+                               owl:cardinality  "1"^^xsd:int ;
+                               owl:onProperty   :bpm
+                             ] ;
+        dta:destination      "Queue3"^^xsd:string ;
+        dta:kind             dta:Get ;
+        dta:parameter        :HRDataReq .
 
 :hrData  a                  owl:ObjectProperty ;
         rdfs:domain         :HRUpdateReq ;
@@ -53,31 +53,31 @@
         rdfs:subPropertyOf  :msData .
 
 :getHRData  a            dta:Operation ;
+        dta:data         :hrData ;
         dta:destination  "Queue2"^^xsd:string ;
-        dta:input        :HRDataReq ;
         dta:kind         dta:Get ;
-        dta:output       :hrData .
-
-:msData  a          owl:ObjectProperty ;
-        rdfs:range  :MSData .
+        dta:parameter    :HRDataReq .
 
 :MSData  a      owl:Class ;
         dta:x   "367"^^xsd:int ;
         dta:y   "283"^^xsd:int .
 
-:requestBpm  a                 dta:Request ;
-        dta:input              :HRDataReq ;
-        dta:kind               dta:Get ;
-        dta:output             :bpm ;
-        dta:outputRestriction  [ a                owl:Restriction ;
-                                 owl:cardinality  "1"^^xsd:int ;
-                                 owl:onProperty   :bpm
-                               ] .
+:msData  a          owl:ObjectProperty ;
+        rdfs:range  :MSData .
+
+:requestBpm  a               dta:Request ;
+        dta:data             :bpm ;
+        dta:dataRestriction  [ a                owl:Restriction ;
+                               owl:cardinality  "1"^^xsd:int ;
+                               owl:onProperty   :bpm
+                             ] ;
+        dta:kind             dta:Get ;
+        dta:parameter        :HRDataReq .
 
 :HeartRateDTA  a       dta:DTA ;
         rdfs:comment   "This is the heart rate DTA" ;
-        dta:operation  :postHRData , :getHRData , :getBpm ;
-        dta:request    :publishHRData , :updateHRData , :requestHRData , :requestMSData , :requestBpm ;
+        dta:operation  :publishHRData , :postHRData , :getHRData , :getBpm ;
+        dta:request    :updateHRData , :subscribeHRData , :requestHRData , :requestMSData , :requestBpm ;
         dta:x          "15"^^xsd:int ;
         dta:y          "15"^^xsd:int .
 
@@ -91,23 +91,23 @@
         rdfs:subClassOf  :MSData ;
         dta:restriction  [ a                owl:Restriction ;
                            owl:cardinality  "1"^^xsd:int ;
-                           owl:onProperty   :bpm
+                           owl:onProperty   :timestamp
                          ] ;
         dta:restriction  [ a                owl:Restriction ;
                            owl:cardinality  "1"^^xsd:int ;
-                           owl:onProperty   :timestamp
+                           owl:onProperty   :bpm
                          ] ;
         dta:x            "314"^^xsd:int ;
         dta:y            "169"^^xsd:int .
 
 :sid    a            owl:DatatypeProperty ;
-        rdfs:domain  :MSDataReq , :HRUpdateReq , :HRDataReq ;
+        rdfs:domain  :HRDataReq , :HRUpdateReq , :MSDataReq ;
         rdfs:range   xsd:string .
 
 :postHRData  a           dta:Operation ;
         dta:destination  "Queue1"^^xsd:string ;
-        dta:input        :HRUpdateReq ;
-        dta:kind         dta:Post .
+        dta:kind         dta:Post ;
+        dta:parameter    :HRUpdateReq .
 
 :bpm    a             owl:DatatypeProperty ;
         rdfs:comment  "The bit per minute" ;
@@ -117,25 +117,34 @@
 :HRUpdateReq  a          owl:Class ;
         dta:restriction  [ a                owl:Restriction ;
                            owl:cardinality  "1"^^xsd:int ;
-                           owl:onProperty   :sid
+                           owl:onProperty   :hrData
                          ] ;
         dta:restriction  [ a                owl:Restriction ;
                            owl:cardinality  "1"^^xsd:int ;
-                           owl:onProperty   :hrData
+                           owl:onProperty   :sid
                          ] ;
         dta:x            "335"^^xsd:int ;
         dta:y            "15"^^xsd:int .
 
-:publishHRData  a    dta:Request ;
-        dta:expires  "10"^^xsd:int ;
-        dta:input    :HRUpdateReq ;
-        dta:kind     dta:Publish .
+:publishHRData  a      dta:Operation ;
+        dta:kind       dta:Publish ;
+        dta:parameter  :HRUpdateReq .
 
 :timestamp  a         owl:DatatypeProperty ;
         rdfs:comment  "The timestamp" ;
         rdfs:domain   :HRData ;
         rdfs:range    xsd:string .
 
-:updateHRData  a   dta:Request ;
-        dta:input  :HRUpdateReq ;
-        dta:kind   dta:Post .
+:subscribeHRData  a          dta:Request ;
+        dta:data             :hrData ;
+        dta:dataRestriction  [ a                owl:Restriction ;
+                               owl:cardinality  "1"^^xsd:int ;
+                               owl:onProperty   :hrData
+                             ] ;
+        dta:destination      "Queue4"^^xsd:string ;
+        dta:expires          "10"^^xsd:int ;
+        dta:kind             dta:Subscribe .
+
+:updateHRData  a       dta:Request ;
+        dta:kind       dta:Post ;
+        dta:parameter  :HRUpdateReq .

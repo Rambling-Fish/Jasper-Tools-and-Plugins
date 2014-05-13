@@ -42,8 +42,8 @@ public class DTAOperationEditPart2 extends DTABrowseNodeEditPart {
 	@Override
 	protected List<Object> findModelSourceConnections() {
 		List<Object> connections = new ArrayList<Object>();
-		connections.addAll(getOperation().getOntModel().listStatements(getOperation(), DTA.input, (RDFNode)null).toList());
-		connections.addAll(getOperation().getOntModel().listStatements(getOperation(), DTA.output, (RDFNode)null).toList());
+		connections.addAll(getOperation().getOntModel().listStatements(getOperation(), DTA.parameter, (RDFNode)null).toList());
+		connections.addAll(getOperation().getOntModel().listStatements(getOperation(), DTA.data, (RDFNode)null).toList());
 		return connections;
 	}
 

@@ -20,19 +20,23 @@ public class GetHRData implements Callable {
 	@Generated("true")
 	public MuleMessage onCall(MuleEventContext muleEventContext) throws Exception {
 		MuleMessage message = muleEventContext.getMessage();
-		HRDataReq input = (HRDataReq) message.getPayload();
-		Object output = process(input, message);
-		message.setPayload(output);
+		HRDataReq parameter = (HRDataReq) message.getPayload();
+		Object data = execute(parameter, message);
+		message.setPayload(data);
 		return message;
 	}
 
 	/**
+	 * Execute the operation (put your implementation here)
+	 * To report error code, call muleMessage.setOutboundProperty("code", <integer>)
+	 * To report error description, call muleMessage.setOutboundProperty("description", <string>)
+	 * 
 	 * @param hRDataReq
-	 * @param muleMessage (on which you may set the property 'statusCode' to report errors)
-	 * @return HRData[] (or some other Object if this processor is not terminal)
+	 * @param muleMessage
+	 * @return HRData[] (or another Object if this processor is not terminal)
 	 */
 	@Generated("false")
-	private Object process(HRDataReq hRDataReq, MuleMessage muleMessage) throws Exception{
+	private Object execute(HRDataReq hRDataReq, MuleMessage muleMessage) throws Exception {
 		HRDataCache cache = HRDataCache.getInstance();
 		String sid = hRDataReq.getSid();
 		HRData hrData = cache.get(sid);

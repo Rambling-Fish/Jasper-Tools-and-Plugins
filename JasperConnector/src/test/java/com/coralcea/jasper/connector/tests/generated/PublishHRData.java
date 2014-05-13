@@ -12,24 +12,24 @@ public class PublishHRData implements Callable {
 
 	/**
 	 * @param muleEventContext
-	 * @return Parameters
+	 * @return Parameter
 	 */
 	@Generated("false")
-	public Parameters onCall(MuleEventContext muleEventContext) throws Exception {
-		Parameters parameters = new Parameters();
-		parameters.setSid((String) muleEventContext.getMessage().getInboundProperty("sid"));
+	public Parameter onCall(MuleEventContext muleEventContext) throws Exception {
+		Parameter parameter = new Parameter();
+		parameter.setSid((String) muleEventContext.getMessage().getInboundProperty("sid"));
 		HRData hrData = new HRDataImpl();
 		hrData.setBpm(Integer.valueOf((String) muleEventContext.getMessage().getInboundProperty("bpm")));
 		hrData.setTimestamp((String) muleEventContext.getMessage().getInboundProperty("timestamp"));
-		parameters.setHrData(hrData);
-		return parameters;
+		parameter.setHrData(hrData);
+		return parameter;
 	}
 
 	/**
-	 * The parameters of {@link PublishHRData}
+	 * The parameter of {@link PublishHRData}
 	 */
 	@Generated("true")
-	public static class Parameters {
+	public static class Parameter {
 
 		@Generated("true")
 		@JsonProperty("http://coralcea.ca/heartratedta#hrData")
@@ -95,7 +95,7 @@ public class PublishHRData implements Callable {
 				return false;
 			if (getClass() != obj.getClass())
 				return false;
-			Parameters other = (Parameters) obj;
+			Parameter other = (Parameter) obj;
 			if (hrData == null) {
 				if (other.hrData != null)
 					return false;
@@ -112,7 +112,7 @@ public class PublishHRData implements Callable {
 		@Override
 		@Generated("true")
 		public String toString() {
-			return "Parameters [ " + "hrData=" + hrData + ", " + "sid=" + sid
+			return "Parameter [ " + "hrData=" + hrData + ", " + "sid=" + sid
 					+ " ]";
 		}
 	}

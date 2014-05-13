@@ -310,11 +310,11 @@ public class JasperConnector implements MuleContextAware
     }
 
     /**
-     * Request
+     * Send
      *
      * {@sample.xml ../../../doc/jasper-connector.xml.sample jasper:send}
      *
-     * @param request The URI of a given DTA request 
+     * @param request A given get/post request 
      * @param exchangePattern The exchange pattern between the connector and Jasper
      * @param timeout The timeout in seconds to wait for a response to the sent request
      * @param muleEvent The mule event
@@ -391,11 +391,28 @@ public class JasperConnector implements MuleContextAware
     }
 
     /**
-     * Provide
+     * Publish
+     *
+     * {@sample.xml ../../../doc/jasper-connector.xml.sample jasper:publish}
+     *
+     * @param operation A given publish operation 
+     * @param muleEvent The mule event
+     * @return Response The MuleMessage to forward to the next processor
+     * @throws Exception if any error occurs
+     */
+    @Processor(friendlyName="Send")@Inject
+    public Object publish(@Placement(group="Parameters")@FriendlyName("Operation URI") final String operation,
+    				   @Lookup MuleEvent muleEvent) throws Exception
+    {
+    	return send(operation, ExchangePattern.one_way, 0, muleEvent);
+    }
+    
+    /**
+     * Execute
      *
      * {@sample.xml ../../../doc/jasper-connector.xml.sample jasper:execute}
      *
-     * @param operation A given operation 
+     * @param operation A given get/post operation
      * @param callback The message processor to forward messages received to
      * @throws Exception if any error occurs
      */
@@ -450,6 +467,22 @@ public class JasperConnector implements MuleContextAware
 		};
     }
 
+    /**
+     * Subscribe
+     *
+     * {@sample.xml ../../../doc/jasper-connector.xml.sample jasper:subscribe}
+     *
+     * @param request A given subscribe request 
+     * @param callback The message processor to forward messages received to
+     * @throws Exception if any error occurs
+     */
+    @Source(friendlyName="Execute", exchangePattern=MessageExchangePattern.REQUEST_RESPONSE, threadingModel=SourceThreadingModel.NONE)
+    public StopSourceCallback subscribe(@Placement(group="Parameters")@FriendlyName("Request URI") final String request,
+    		                          final SourceCallback callback) throws Exception
+    {
+    	return execute(request, callback);
+    }
+    
 	private MuleEvent createMuleEvent(MuleMessage msg, FlowConstruct flowConstruct, Object replyTo, ReplyToHandler replyToHandler) {
 		return new DefaultMuleEvent(msg, 
 			URI.create(""), "", MessageExchangePattern.ONE_WAY,
