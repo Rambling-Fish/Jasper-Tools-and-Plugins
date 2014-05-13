@@ -26,16 +26,16 @@ import com.hp.hpl.jena.rdf.model.Resource;
 
 public class JasperSender {
 
-	private OntResource request;
 	private Queue queue;
 	private Session session;
 	private MessageProducer producer;
 	private ObjectMapper jsonMapper;
-	private boolean isMultiValued;
+	private String requestURI;
 	private Resource kind;
 	private String rule;
-	private Resource input, output;
-	private Class<?> inputType, outputType;
+	private boolean isMultiValued;
+	private Resource parameter, data;
+	private Class<?> parameterType, dataType;
 	private Callable processor;
 	
 	public JasperSender(JasperConnection connection) throws Exception {
@@ -45,17 +45,23 @@ public class JasperSender {
 	public JasperSender(JasperConnection connection, String req) throws Exception {
 		session = connection.createSession();
 		if (req != null) {
-			request = connection.getMetadata().get(req);
+			JasperMetadata meta = connection.getMetadata();
+			OntResource request = meta.get(req);
 			if (request == null)
-				throw new IllegalArgumentException("request "+req+" is not defined in the DTA");
-			kind = connection.getMetadata().getKind(request);
-			rule = connection.getMetadata().getRule(request);
-			isMultiValued = connection.getMetadata().hasMultivaluedOutput(request);
-			input = connection.getMetadata().getInput(request);
-			output = connection.getMetadata().getOutput(request);
-			inputType = connection.getMetadata().getInputTypeOfRequest(request);
-			outputType = connection.getMetadata().getOutputTypeOfRequest(request);
-			processor = connection.getMetadata().getCallable(request);
+				throw new IllegalArgumentException("resource "+req+" is not defined in the DTA");
+    		else if (meta.isOfType(request, JasperConstants.DTA_Operation) && !meta.isOfKind(request, JasperConstants.DTA_Publish))
+    			throw new IllegalArgumentException("operation "+request+" cannot be associated with an outbound endpoint");
+    		else if (meta.isOfKind(request, JasperConstants.DTA_Subscribe))
+    			throw new IllegalArgumentException("request "+request+" cannot be associated with an outbound endpoint");
+			requestURI = request.getURI();
+			kind = meta.getKind(request);
+			rule = meta.getRule(request);
+			isMultiValued = meta.hasMultivaluedData(request);
+			parameter = meta.getParameter(request);
+			data = meta.getData(request);
+			parameterType = meta.getRequestParameterClass(request);
+			dataType = meta.getRequestDataClass(request);
+			processor = meta.getCallable(request);
 			queue = session.createQueue(JasperConstants.GLOBAL_QUEUE);
 		}
 		producer = session.createProducer(queue);
@@ -83,13 +89,13 @@ public class JasperSender {
 
 	public TextMessage convertOutgoingMessage(JasperContext context, MuleMessage muleMsg, int expires) throws Exception {
 		Object content = muleMsg.getPayload();
-		if (!inputType.isInstance(content))
-			throw new Exception("Invalid input passed to request "+request+": "+content);
+		if (!parameterType.isInstance(content))
+			throw new Exception("Invalid input passed to request "+requestURI+": "+content);
 		
 		JasperRequest req = new JasperRequest();
 		req.setVersion(JasperConstants.VERSION);
 		req.setMethod(kind.getLocalName().toUpperCase());
-		req.setRuri(req.getMethod().equals(JasperConstants.GET) ? output.getURI() : input.getURI());
+		req.setRuri(req.getMethod().equals(JasperConstants.GET) ? data.getURI() : parameter.getURI());
 		req.setRule(rule);
 		Map<String, String> headers = new HashMap<String, String>();
 		headers.put(JasperConstants.CONTENT_TYPE, JasperConstants.JSON);
@@ -111,7 +117,7 @@ public class JasperSender {
 		try {
 			response = jsonMapper.readValue(jmsMsg.getText(), JasperResponse.class);
 		} catch (Exception e) {
-			throw new Exception("Invalid resoinse received for request "+request, e);
+			throw new Exception("Invalid resoinse received for request "+requestURI, e);
 		}
 
 		int code = response.getCode();
@@ -121,9 +127,9 @@ public class JasperSender {
 		}
 		
 		MuleMessage muleMsg = null;
-		if (outputType != null && response.getHeaders().get(JasperConstants.CONTENT_TYPE).equals(JasperConstants.JSON)) {
+		if (dataType != null && response.getHeaders().get(JasperConstants.CONTENT_TYPE).equals(JasperConstants.JSON)) {
 			muleMsg = context.toMuleMessage(jmsMsg);
-			Object payload = jsonMapper.readValue(new String(response.getPayload()), outputType);
+			Object payload = jsonMapper.readValue(new String(response.getPayload()), dataType);
 			muleMsg.setPayload(payload);
 		}
 		return muleMsg;

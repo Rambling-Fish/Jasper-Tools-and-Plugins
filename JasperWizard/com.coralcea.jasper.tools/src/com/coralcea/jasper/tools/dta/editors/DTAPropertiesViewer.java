@@ -11,6 +11,7 @@ import java.util.regex.Pattern;
 
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
@@ -37,6 +38,7 @@ import org.eclipse.swt.widgets.Button;
 import org.eclipse.swt.widgets.Composite;
 import org.eclipse.swt.widgets.Control;
 import org.eclipse.swt.widgets.Event;
+import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
@@ -225,12 +227,19 @@ public class DTAPropertiesViewer extends DTAViewer {
 		} else if (DTAUtilities.isRequest(element)) {
 			getControl().setText(imported+"Request");
 			buildRequestContents(body, element);
+		} else {
+			buildUnrecognizedContent(body, element);
 		}
 		
 		scrollpane.setMinSize(body.computeSize(SWT.DEFAULT, SWT.DEFAULT));
 		return scrollpane;
 	}
 
+	private void buildUnrecognizedContent(Composite parent, Resource element) {
+		Label label = createLabel(parent, "<" + element.getURI()+"> : unrecognized element type", "Could not recognize the element's type");
+		label.setForeground(ColorConstants.red);
+	}
+	
 	private void buildOntologyContents(Composite parent, Ontology element) {
 		Composite group = createComposite(parent, 2);
 		
@@ -283,12 +292,13 @@ public class DTAPropertiesViewer extends DTAViewer {
 		Composite group = createComposite(parent, 2);
 		
 		addURI(group, element);
+		if (!DTAUtilities.isPublish(element))
+			addDestination(group, element);
 		addDescription(group, element);
-		addDestination(group, element);
 		addKind(group, element);
-		addInput(group, element);
 		if (DTAUtilities.isGet(element))
-			addOutput(group, element);
+			addData(group, element);
+		addParameter(group, element);
 
 		addParametersSection(parent, element);
 	}
@@ -297,14 +307,18 @@ public class DTAPropertiesViewer extends DTAViewer {
 		Composite group = createComposite(parent, 2);
 		
 		addURI(group, element);
+		if (DTAUtilities.isSubscribe(element))
+			addDestination(group, element);
 		addDescription(group, element);
 		addRule(group, element);
 		addKind(group, element);
-		addInput(group, element);
-		if (DTAUtilities.isGet(element))
-			addOutput(group, element);
+		if (!DTAUtilities.isPost(element))
+			addData(group, element);
+		if (!DTAUtilities.isSubscribe(element))
+			addParameter(group, element);
 		
-		addParametersSection(parent, element);
+		if (!DTAUtilities.isSubscribe(element))
+			addParametersSection(parent, element);
 	}
 
 	private void addURI(final Composite group, final OntResource element) {
@@ -383,7 +397,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addDestination(Composite group, OntResource element) {
-        createLabel(group, "Destination:", "The destination of this operation");
+        createLabel(group, "Destination:", "The destination of this "+DTAUtilities.getKind(element));
         
         Text text = createText(group, 0, DTAUtilities.getLabel(element.getPropertyValue(DTA.destination)));
 		setupEditableText(text, DTA.destination, null, XSDDatatype.XSDstring, false);
@@ -391,12 +405,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addKind(Composite group, final OntResource element) {
-		createLabel(group, "Kind:", "The kind of this operation/request");
+		createLabel(group, "Kind:", "The kind of this "+DTAUtilities.getKind(element));
 		
 		List<Resource> kinds = new ArrayList<Resource>(3);
 		kinds.add(DTA.Get);
 		kinds.add(DTA.Post);
 		if (DTAUtilities.isRequest(element))
+			kinds.add(DTA.Subscribe);
+		else
 			kinds.add(DTA.Publish);
 		
         ComboViewer combo = createCombo(group, SWT.READ_ONLY, new FragmentProvider(), 
@@ -409,10 +425,27 @@ public class DTAPropertiesViewer extends DTAViewer {
 					Resource value = (Resource) selection.getFirstElement();
 					CompoundCommand cc = new CompoundCommand();
 					cc.add(new SetPropertyCommand(element, DTA.kind, value));
-					if (!DTA.Get.equals(value) && element.hasProperty(DTA.output))
-						cc.add(new SetPropertyCommand(element, DTA.output, null));
-					if (!DTA.Get.equals(value) && element.hasProperty(DTA.outputRestriction))
-						cc.add(new DeleteResourceCommand(element.getPropertyResourceValue(DTA.outputRestriction)));
+					if (!DTA.Get.equals(value) && !DTA.Subscribe.equals(value)) {
+						if (element.hasProperty(DTA.data))
+							cc.add(new SetPropertyCommand(element, DTA.data, null));
+						if (element.hasProperty(DTA.dataRestriction))
+							cc.add(new DeleteResourceCommand(element.getPropertyResourceValue(DTA.dataRestriction)));
+					}
+					if (DTAUtilities.isOperation(element)) {
+						if (DTAUtilities.isPublish(element) && !DTA.Publish.equals(value)) {
+							OntResource dta = DTAUtilities.listSubjects(DTA.operation, element).iterator().next().as(OntResource.class);
+							Literal dest = element.getOntModel().createTypedLiteral(DTAUtilities.getUniqueDestination(dta, element));
+							cc.add(new SetPropertyCommand(element, DTA.destination, dest));
+						} else if (!DTAUtilities.isPublish(element) && DTA.Publish.equals(value))
+							cc.add(new SetPropertyCommand(element, DTA.destination, null));
+					} else {
+						if (!DTAUtilities.isSubscribe(element) && DTA.Subscribe.equals(value)) {
+							OntResource dta = DTAUtilities.listSubjects(DTA.request, element).iterator().next().as(OntResource.class);
+							Literal dest = element.getOntModel().createTypedLiteral(DTAUtilities.getUniqueDestination(dta, element));
+							cc.add(new SetPropertyCommand(element, DTA.destination, dest));
+						} else if (DTAUtilities.isSubscribe(element) && !DTA.Subscribe.equals(value))
+							cc.add(new SetPropertyCommand(element, DTA.destination, null));
+					}
 					getEditor().executeCommand(cc, true);
 				}
 			}
@@ -420,7 +453,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addType(final Composite group, final OntProperty element) {
-        createLabel(group, "Type:", "The type of this property");
+        createLabel(group, "Type:", "The type of this "+DTAUtilities.getKind(element));
         
         Composite linkGroup = createComposite(group, 2);
         
@@ -458,15 +491,15 @@ public class DTAPropertiesViewer extends DTAViewer {
         }
 	}
 
-	private void addInput(final Composite group, final OntResource element) {
-        createLabel(group, "Input:", "The input of this operation/request");
+	private void addParameter(final Composite group, final OntResource element) {
+        createLabel(group, "Parameter:", "The parameter of this "+DTAUtilities.getKind(element));
         
         Composite linkGroup = createComposite(group, 2, 0);
         
-        final OntClass input = DTAUtilities.getPropertyResourceValue(element, DTA.input, OntClass.class);
+        final OntClass parameter = DTAUtilities.getPropertyResourceValue(element, DTA.parameter, OntClass.class);
 
-        Link link = createLink(linkGroup, input);
-        link.setEnabled(input!=null);
+        Link link = createLink(linkGroup, parameter);
+        link.setEnabled(parameter!=null);
         
         Button button = createButton(linkGroup, SWT.ARROW|SWT.DOWN, "");
         button.setEnabled(DTAUtilities.isDefinedByBase(element));
@@ -474,7 +507,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
 				List<OntClass> types = DTAUtilities.listClasses(element.getOntModel());
-				Resource type = DTASelectionDialog.run("Select Input Type", element.getOntModel(), types, true, true);
+				Resource type = DTASelectionDialog.run("Select Parameter Type", element.getOntModel(), types, true, true);
 				if (DTA.New.equals(type)) {
 					String value = promptForNewURI(group.getShell(), "Type", element.getOntModel().getNsPrefixURI(""));
 					if (value != null) {
@@ -484,9 +517,9 @@ public class DTAPropertiesViewer extends DTAViewer {
 					} else
 						return;
 				}
-				if (type != null && !type.equals(input)) {
-					cc.add(new SetPropertyCommand(element, DTA.input, DTA.None.equals(type) ? null : type));
-					for (Resource r : DTAUtilities.listObjects(element, DTA.inputRestriction, Resource.class))
+				if (type != null && !type.equals(parameter)) {
+					cc.add(new SetPropertyCommand(element, DTA.parameter, DTA.None.equals(type) ? null : type));
+					for (Resource r : DTAUtilities.listObjects(element, DTA.parameterRestriction, Resource.class))
 						cc.add(new DeleteResourceCommand(r));
 					getEditor().executeCommand(cc, true);
 				}
@@ -494,15 +527,15 @@ public class DTAPropertiesViewer extends DTAViewer {
 		});
 	}
 
-	private void addOutput(final Composite group, final OntResource element) {
-        createLabel(group, "Output:", "The output of this opration/request");
+	private void addData(final Composite group, final OntResource element) {
+        createLabel(group, "Data:", "The returned data of this "+DTAUtilities.getKind(element));
         
         Composite linkGroup = createComposite(group, 3, 0);
 
-        final OntProperty output = DTAUtilities.getPropertyResourceValue(element, DTA.output, OntProperty.class);
+        final OntProperty data = DTAUtilities.getPropertyResourceValue(element, DTA.data, OntProperty.class);
         
-        Link link = createLink(linkGroup, output);
-        link.setEnabled(output!=null);
+        Link link = createLink(linkGroup, data);
+        link.setEnabled(data!=null);
         
 		Button button = createButton(linkGroup, SWT.ARROW|SWT.DOWN, "");
         button.setEnabled(DTAUtilities.isDefinedByBase(element));
@@ -510,7 +543,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
 				List<OntProperty> properties = DTAUtilities.listProperties(element.getOntModel());
-				Resource property = DTASelectionDialog.run("Select Output Property", element.getOntModel(), properties, true, true);
+				Resource property = DTASelectionDialog.run("Select Data Property", element.getOntModel(), properties, true, true);
 				if (DTA.New.equals(property)) {
 					String value = promptForNewURI(group.getShell(), "Property", element.getOntModel().getNsPrefixURI(""));
 					if (value != null) {
@@ -520,31 +553,31 @@ public class DTAPropertiesViewer extends DTAViewer {
 					} else
 						return;
 				}
-				if (property != null && !property.equals(output)) {
-					cc.add(new SetPropertyCommand(element, DTA.output, DTA.None.equals(property) ? null : property));
+				if (property != null && !property.equals(data)) {
+					cc.add(new SetPropertyCommand(element, DTA.data, DTA.None.equals(property) ? null : property));
 					getEditor().executeCommand(cc, true);
 				}
 			}
         });
 
         String initialValue = null; 
-        if (output!=null) {
-        	Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.outputRestriction, output);
+        if (data!=null) {
+        	Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.dataRestriction, data);
         	initialValue = DTAUtilities.getCardinality(initial);
         }
         ComboViewer combo = createCombo(linkGroup, SWT.READ_ONLY, null, Cardinality.toArray(), initialValue);
-		combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element) && output!=null);
+		combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element) && data!=null);
 		combo.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
 				IStructuredSelection selection = (IStructuredSelection) event.getSelection();
 				String value = (String) selection.getFirstElement();
-				getEditor().executeCommand(new ChangeCardinalityCommand(element, DTA.outputRestriction, output, value), true);
+				getEditor().executeCommand(new ChangeCardinalityCommand(element, DTA.dataRestriction, data, value), true);
 			}
 		});
 	}
 
 	private void addImportsSection(Composite parent, final Ontology element) {
-        Section section = createSection(parent, "Imports", "The models imported by this model");
+        Section section = createSection(parent, "Imports", "The models imported by this "+DTAUtilities.getKind(element));
         
 		if (DTAUtilities.isDefinedByBase(element)) {
 			final ToolBar toolbar = createToolBar(section, 0);
@@ -587,7 +620,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addDTAsSection(Composite parent, final Ontology element) {
-        Section section = createSection(parent, "DTAs", "The DTAs defined in this model");
+        Section section = createSection(parent, "DTAs", "The DTAs defined in this "+DTAUtilities.getKind(element));
         
 		if (DTAUtilities.isDefinedByBase(element)) {
 	        final ToolBar toolbar = createToolBar(section, 0);
@@ -630,7 +663,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addClassesSection(Composite parent, final Ontology element) {
-        Section section = createSection(parent, "Types", "The types defined in this model");
+        Section section = createSection(parent, "Types", "The types defined in this "+DTAUtilities.getKind(element));
 
 		if (DTAUtilities.isDefinedByBase(element)) {
 	        final ToolBar toolbar = createToolBar(section, 0);
@@ -665,7 +698,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addPropertiesSection(Composite parent, final Ontology element) {
-        Section section = createSection(parent, "Properties", "The properties defined in this model");
+        Section section = createSection(parent, "Properties", "The properties defined in this "+DTAUtilities.getKind(element));
 
 		if (DTAUtilities.isDefinedByBase(element)) {
 	        final ToolBar toolbar = createToolBar(section, 0);
@@ -700,7 +733,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addOperationsSection(Composite parent, final OntResource element) {
-        Section section = createSection(parent, "Operations", "The operations defined by this DTA");
+        Section section = createSection(parent, "Operations", "The operations defined by this "+DTAUtilities.getKind(element));
 
 		if (DTAUtilities.isDefinedByBase(element)) {
 	        final ToolBar toolbar = createToolBar(section, 0);
@@ -742,7 +775,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addRequestsSection(Composite parent, final OntResource element) {
-        Section section = createSection(parent, "Requests", "The requests defined by this DTA");
+        Section section = createSection(parent, "Requests", "The requests defined by this "+DTAUtilities.getKind(element));
 
 		if (DTAUtilities.isDefinedByBase(element)) {
 	        final ToolBar toolbar = createToolBar(section, 0);
@@ -783,7 +816,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addSuperclassesSection(final Composite parent, final OntClass element) {
-        Section section = createSection(parent, "Super Types", "The super types of this type");
+        Section section = createSection(parent, "Super Types", "The super types of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -823,7 +856,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addSubclassesSection(final Composite parent, final OntClass element) {
-        Section section = createSection(parent, "Sub Types", "The subtypes of this class");
+        Section section = createSection(parent, "Sub Types", "The subtypes of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -863,7 +896,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addClassPropertiesSection(final Composite parent, final OntClass element) {
-        Section section = createSection(parent, "Defined Properties", "The properties defined for this type");
+        Section section = createSection(parent, "Defined Properties", "The properties defined for this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -920,7 +953,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 	
 	private void addPropertyClassesSection(final Composite parent, final OntProperty element) {
-        Section section = createSection(parent, "Defining Types", "The defining types of this property");
+        Section section = createSection(parent, "Defining Types", "The defining types of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -960,7 +993,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addEquivalentPropertiesSection(final Composite parent, final OntProperty element) {
-        Section section = createSection(parent, "Equivalent Properties", "The equivalent properties of this property");
+        Section section = createSection(parent, "Equivalent Properties", "The equivalent properties of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -1004,7 +1037,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addSuperPropertiesSection(final Composite parent, final OntProperty element) {
-        Section section = createSection(parent, "Super Properties", "The super properties of this property");
+        Section section = createSection(parent, "Super Properties", "The super properties of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -1044,7 +1077,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addSubPropertiesSection(final Composite parent, final OntProperty element) {
-        Section section = createSection(parent, "Sub Properties", "The sub properties of this class");
+        Section section = createSection(parent, "Sub Properties", "The sub properties of this "+DTAUtilities.getKind(element));
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
@@ -1084,22 +1117,23 @@ public class DTAPropertiesViewer extends DTAViewer {
 	}
 
 	private void addParametersSection(final Composite parent, final OntResource element) {
-        Section section = createSection(parent, "Parameters", "The input properties of this request");
+        Section section = createSection(parent, "Parameter Details", "The details of the parameter of this operation/request");
+        section.setExpanded(false);
  
 		final Composite group = createComposite(section,4);
 		section.setClient(group);
 		
 		Set<OntProperty> parameters = Collections.emptySet();
-		OntClass input = DTAUtilities.getPropertyResourceValue(element, DTA.input, OntClass.class);
-		if (input!=null)
-			parameters = DTAUtilities.listAllProperties(input);
+		OntClass parameter = DTAUtilities.getPropertyResourceValue(element, DTA.parameter, OntClass.class);
+		if (parameter!=null)
+			parameters = DTAUtilities.listAllProperties(parameter);
 		
 		for (final OntProperty p : DTAUtilities.sortOnLabel(parameters.iterator())) {
 			createLink(group, p);
 
 			createLabel(group, ":", null);
 			
-			final Restriction restriction = DTAUtilities.getDirectRestriction(element, DTA.inputRestriction, p);
+			final Restriction restriction = DTAUtilities.getDirectRestriction(element, DTA.parameterRestriction, p);
 		    final Resource oldType = (restriction!=null) ? DTAUtilities.getRestrictedType(restriction) : p.getRange();
 			Link link = createLink(group, oldType);
 

@@ -106,7 +106,7 @@ public class DTAUMLDiagramEditPart extends DTAResourceNodeEditPart {
 		
 		StmtIterator i = DTAUtilities.listStatementsOfPredicates(model.getBaseModel(), new Property[]{
 			RDFS.subClassOf, RDFS.subPropertyOf, RDFS.domain, RDFS.range, OWL.equivalentProperty, 
-			DTA.operation, DTA.request,	DTA.input, DTA.output
+			DTA.operation, DTA.request,	DTA.parameter, DTA.data
 		});
 		while (i.hasNext()) {
 			Statement s = i.next();

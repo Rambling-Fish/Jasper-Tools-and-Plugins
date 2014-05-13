@@ -1,8 +1,11 @@
 package com.coralcea.jasper.tools.dta;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -146,11 +149,11 @@ public class DTACodeGenerator {
 		        packages.add(getPackageName(operation));
 		        namespaces.add(operation.getNameSpace());
 		        
-				if (operation.hasProperty(DTA.input))
-					collectType(operation.getPropertyResourceValue(DTA.input), packages, types, namespaces);
+				if (operation.hasProperty(DTA.parameter))
+					collectType(operation.getPropertyResourceValue(DTA.parameter), packages, types, namespaces);
 				
-				if (operation.hasProperty(DTA.output))
-					collectProperty(operation.getPropertyResourceValue(DTA.output), packages, types, namespaces);
+				if (operation.hasProperty(DTA.data))
+					collectProperty(operation.getPropertyResourceValue(DTA.data), packages, types, namespaces);
 			}
 
 			for(Resource request : DTAUtilities.listObjects(dta, DTA.request, Resource.class)) {
@@ -158,16 +161,16 @@ public class DTACodeGenerator {
 		        packages.add(getPackageName(request));
 		        namespaces.add(request.getNameSpace());
 		        
-				if (request.hasProperty(DTA.input)) {
-					Resource input = request.getPropertyResourceValue(DTA.input);
-					for (OntProperty p : DTAUtilities.listAllProperties(input))
+				if (request.hasProperty(DTA.parameter)) {
+					Resource parameter = request.getPropertyResourceValue(DTA.parameter);
+					for (OntProperty p : DTAUtilities.listAllProperties(parameter))
 						collectProperty(p, packages, types, namespaces);
-					for (AllValuesFromRestriction restriction : DTAUtilities.listObjects(request, DTA.inputRestriction, AllValuesFromRestriction.class))
+					for (AllValuesFromRestriction restriction : DTAUtilities.listObjects(request, DTA.parameterRestriction, AllValuesFromRestriction.class))
 						collectType(restriction.getPropertyResourceValue(OWL.allValuesFrom), packages, types, namespaces);
 				}
 				
-				if (request.hasProperty(DTA.output)) 
-					collectProperty(request.getPropertyResourceValue(DTA.output), packages, types, namespaces);
+				if (request.hasProperty(DTA.data)) 
+					collectProperty(request.getPropertyResourceValue(DTA.data), packages, types, namespaces);
 			}
 		}
 	}
@@ -237,7 +240,10 @@ public class DTACodeGenerator {
 		for(Resource operation : operations) {
 			String packageName = getPackageName(operation);
 			IPackageFragment aPackage = root.getPackageFragment(packageName);
-			error |= generateOperationClass(aPackage, operation, new SubProgressMonitor(monitor, 1));
+			if (DTAUtilities.isPublish(operation))
+				error |= generateProcessorClass(aPackage, operation, new SubProgressMonitor(monitor, 1));
+			else
+				error |= generateSourceClass(aPackage, operation, new SubProgressMonitor(monitor, 1));
 		}
 		monitor.done();
 		
@@ -251,8 +257,10 @@ public class DTACodeGenerator {
 		for(Resource request : requests) {
 			String packageName = getPackageName(request);
 			IPackageFragment aPackage = root.getPackageFragment(packageName);
-			error |= generateOperationClass(aPackage, request, new SubProgressMonitor(monitor, 1));
-			error |= generateRequestParams(aPackage, request, new SubProgressMonitor(monitor, 1));
+			if (DTAUtilities.isSubscribe(request))
+				error |= generateSourceClass(aPackage, request, new SubProgressMonitor(monitor, 1));
+			else
+				error |= generateProcessorClass(aPackage, request, new SubProgressMonitor(monitor, 1));
 		}
 		monitor.done();
 		
@@ -387,7 +395,7 @@ public class DTACodeGenerator {
 		return error;
 	}			
 
-	private boolean generateRequestParams(IPackageFragment aPackage, Resource request, IProgressMonitor monitor) {
+	private boolean generateParameter(IPackageFragment aPackage, Resource request, IProgressMonitor monitor) {
 		boolean error=false;
  		monitor.beginTask("Generating class", 1);
 
@@ -397,7 +405,7 @@ public class DTACodeGenerator {
 		ICompilationUnit aJavaFile = aPackage.getCompilationUnit(typeName+".java");
         IType opType = aJavaFile.getType(typeName);
 
-		String className = "Parameters";
+		String className = "Parameter";
 		IType aType = opType.getType(className);
 		
         if (aType.exists() && isGenerated(aType)) {
@@ -414,7 +422,7 @@ public class DTACodeGenerator {
 
 			if (!typePackage.equals("xsd") && !typePackage.equals(typePackage))
 				typeName = typePackage+"."+typeName;
-			String comment = createComment(new String[]{"The parameters of {@link "+typeName+"}"});
+			String comment = createComment(new String[]{"The parameter of {@link "+typeName+"}"});
 
 			try {
 				aType = opType.createType(comment+genAnnot+"public static class "+className+" {\n}", null, true, null);
@@ -432,14 +440,14 @@ public class DTACodeGenerator {
 			error=true;
 		}
 
-		OntClass input = DTAUtilities.getInput(request);
+		OntClass parameter = DTAUtilities.getParameter(request);
 		Map<OntProperty, Resource> typeOverrides = new HashMap<OntProperty, Resource>();
-		for(AllValuesFromRestriction r : DTAUtilities.listObjects(request, DTA.inputRestriction, AllValuesFromRestriction.class))
+		for(AllValuesFromRestriction r : DTAUtilities.listObjects(request, DTA.parameterRestriction, AllValuesFromRestriction.class))
 			typeOverrides.put(r.getOnProperty(), r.getAllValuesFrom());
 			
-		error |= generateFields(aType, input, typeOverrides);
-		error |= generateGetters(aType, input, typeOverrides, true, true, true);
-		error |= generateSetters(aType, input, typeOverrides, true, true, true);
+		error |= generateFields(aType, parameter, typeOverrides);
+		error |= generateGetters(aType, parameter, typeOverrides, true, true, true);
+		error |= generateSetters(aType, parameter, typeOverrides, true, true, true);
 		error |= generateHashCode(aType);
 		error |= generateEquals(aType);
 		error |= generateToString(aType);
@@ -804,7 +812,7 @@ public class DTACodeGenerator {
 		return error;
 	}
 
-	private boolean generateOperationClass(IPackageFragment aPackage, Resource operation, IProgressMonitor monitor) {
+	private boolean generateSourceClass(IPackageFragment aPackage, Resource operation, IProgressMonitor monitor) {
 		boolean error=false;
 		monitor.beginTask("Generating class", 1);
 
@@ -838,8 +846,47 @@ public class DTACodeGenerator {
 		}
 		
 		error |= generateOnCall(aType, operation);
-		if (DTAUtilities.isOperation(operation))
-			error |= generateProcess(aType, operation);
+		error |= generateExecute(aType, operation);
+		
+		monitor.done();
+		return error;
+	}			
+
+	private boolean generateProcessorClass(IPackageFragment aPackage, Resource operation, IProgressMonitor monitor) {
+		boolean error=false;
+		monitor.beginTask("Generating class", 1);
+
+		String typeName = getTypeName(operation);
+		ICompilationUnit aJavaFile = aPackage.getCompilationUnit(typeName+".java");
+        IType aType = aJavaFile.getType(typeName);
+
+        if (!aType.exists()) {
+    		String comment = DTAUtilities.getStringValue(operation, RDFS.comment);
+			comment = comment.length()>0 ? createComment(new String[]{comment}) : comment;
+
+			String genAnnot = "@Generated(\"true\")\n";
+	        String uriAnnot = "@JsonTypeName(\""+operation.getURI()+"\")\n";
+
+			try {
+				aType = aJavaFile.createType(comment+genAnnot+uriAnnot+"public class "+typeName+" implements Callable {\n}", null, true, null);
+			} catch (Exception e) {
+				Activator.getDefault().log("Error creating Java type", e);
+				error=true;
+			}
+        } else
+        	error |= updateOperationClass(aJavaFile, operation);
+
+		try {
+			aJavaFile.createImport("javax.annotation.Generated", null, null);
+			aJavaFile.createImport("org.codehaus.jackson.annotate.*", null, null);
+			aJavaFile.createImport("org.mule.api.lifecycle.Callable", null, null);
+		} catch (JavaModelException e) {
+			Activator.getDefault().log("Error creating Java type", e);
+			error=true;
+		}
+		
+		error |= generateOnCall(aType, operation);
+		error |= generateParameter(aPackage, operation, new SubProgressMonitor(monitor, 1));
 		
 		monitor.done();
 		return error;
@@ -894,34 +941,44 @@ public class DTACodeGenerator {
 	private boolean generateOnCall(IType aType, Resource operation) {
 		boolean error=false;
 
-		Resource inputType = operation.getPropertyResourceValue(DTA.input);
-
 		String typePackage = getPackageName(operation);
 		String methodName = "onCall";
 		
-		String inputTypeName = "MuleEventContext";
-    	String inputName = toCamelCase(inputTypeName);
+		String parameterTypeName = "MuleEventContext";
+    	String parameterName = toCamelCase(parameterTypeName);
  
-		String realInputTypeName = getTypeName(inputType);
-		String inputTypePackName = getPackageName(inputType);
-		if (!inputTypePackName.equals("xsd") && !inputTypePackName.equals(typePackage))
-			realInputTypeName = inputTypePackName+"."+realInputTypeName;
+		Resource parameterType;
+		if (DTAUtilities.isSubscribe(operation)) {
+			Resource dataProperty = operation.getPropertyResourceValue(DTA.data);
+			parameterType = dataProperty.getPropertyResourceValue(RDFS.range);
+		} else
+			parameterType = operation.getPropertyResourceValue(DTA.parameter);
 
-    	String outputTypeName;
-    	if (DTAUtilities.isRequest(operation))
-    		outputTypeName = "Parameters";
+		String realParameterTypeName = getTypeName(parameterType);
+		String parameterTypePackName = getPackageName(parameterType);
+		if (!parameterTypePackName.equals("xsd") && !parameterTypePackName.equals(typePackage))
+			realParameterTypeName = parameterTypePackName+"."+realParameterTypeName;
+		if (DTAUtilities.isSubscribe(operation)) {
+			Resource dataProperty = operation.getPropertyResourceValue(DTA.data);
+			if (isArrayData(operation, dataProperty.as(Property.class)))
+				realParameterTypeName += "[]";
+		}
+
+    	String dataTypeName;
+    	if (isProcessor(operation))
+    		dataTypeName = "Parameter";
     	else
-    		outputTypeName = "MuleMessage";
+    		dataTypeName = "MuleMessage";
 
     	String body = "{\n";
-    	if (DTAUtilities.isRequest(operation)) {
-   	    	body += "\tParameters parameters = new Parameters();\n";
-   	    	body += "\treturn parameters;\n";
+    	if (isProcessor(operation)) {
+   	    	body += "\tParameter parameter = new Parameter();\n";
+   	    	body += "\treturn parameter;\n";
     	} else {
-    		body += "\tMuleMessage message = "+inputName+".getMessage();\n";
-    		body += "\t"+realInputTypeName+" input = ("+realInputTypeName+") message.getPayload();\n";
-    		body += "\tObject output = execute(input, message);\n";
-    		body += "\tmessage.setPayload(output);\n";
+    		body += "\tMuleMessage message = "+parameterName+".getMessage();\n";
+   			body += "\t"+realParameterTypeName+" parameter = ("+realParameterTypeName+") message.getPayload();\n";
+   			body += "\tObject data = execute(parameter, message);\n";
+    		body += "\tmessage.setPayload(data);\n";
     		body += "\treturn message;\n";
     	}
     	body += "}";
@@ -936,15 +993,15 @@ public class DTACodeGenerator {
 			error=true;
 		}
    	
-    	IMethod aMethod = aType.getMethod(methodName, new String[]{Signature.createTypeSignature(inputTypeName, false)});
+    	IMethod aMethod = aType.getMethod(methodName, new String[]{Signature.createTypeSignature(parameterTypeName, false)});
         
        if (!aMethod.exists()) {
         	String genAnnot = "@Generated(\"true\")\n";
 
-			String comment = createComment(new String[]{"@param "+inputName, "@return "+outputTypeName});
+			String comment = createComment(new String[]{"@param "+parameterName, "@return "+dataTypeName});
 
 	        try {
-	        	aMethod = aType.createMethod(comment+genAnnot+"public "+outputTypeName+" "+methodName+"("+inputTypeName+" "+inputName+") throws Exception "+body, null, true, null);
+	        	aMethod = aType.createMethod(comment+genAnnot+"public "+dataTypeName+" "+methodName+"("+parameterTypeName+" "+parameterName+") throws Exception "+body, null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
@@ -954,7 +1011,7 @@ public class DTACodeGenerator {
 		try {
 			ICompilationUnit aJavaFile = aType.getCompilationUnit();
 			aJavaFile.createImport("org.mule.api.MuleEventContext", null, null);
-	    	if (DTAUtilities.isOperation(operation))
+	    	if (isSource(operation))
 	    		aJavaFile.createImport("org.mule.api.MuleMessage", null, null);
 		} catch (JavaModelException e) {
 			Activator.getDefault().log("Error creating Java type", e);
@@ -964,35 +1021,44 @@ public class DTACodeGenerator {
 		return error;
 	}
 	
-	private boolean generateProcess(IType aType, Resource operation) {
+	private boolean generateExecute(IType aType, Resource operation) {
 		boolean error=false;
 
 		String typePackage = getPackageName(operation);
 		String methodName = "execute";
 
-		Resource inputType = operation.getPropertyResourceValue(DTA.input);
-		Resource outputProperty = operation.getPropertyResourceValue(DTA.output);
+		boolean isArrayParameter;
+		Resource parameterType;
+		Resource dataProperty;
+		if (DTAUtilities.isSubscribe(operation)) {
+			dataProperty = operation.getPropertyResourceValue(DTA.data);
+			isArrayParameter = isArrayData(operation, dataProperty.as(Property.class));
+			parameterType = dataProperty.getPropertyResourceValue(RDFS.range);
+			dataProperty = null;
+		} else {
+			isArrayParameter = false;
+			parameterType = operation.getPropertyResourceValue(DTA.parameter);
+			dataProperty = operation.getPropertyResourceValue(DTA.data);
+		}
 
-		String inputTypeName = getTypeName(inputType);
-		String inputTypePackName = getPackageName(inputType);
-		if (!inputTypePackName.equals("xsd") && !inputTypePackName.equals(typePackage))
-			inputTypeName = inputTypePackName+"."+inputTypeName;
-    	String inputName = toCamelCase(inputTypeName);
+		String parameterTypeName = getTypeName(parameterType);
+		String parameterTypePackName = getPackageName(parameterType);
+		if (!parameterTypePackName.equals("xsd") && !parameterTypePackName.equals(typePackage))
+			parameterTypeName = parameterTypePackName+"."+parameterTypeName;
 
-    	String outputTypeName;
-    	if (outputProperty != null) {
-    		Resource outputType = outputProperty.getPropertyResourceValue(RDFS.range);
-    		outputTypeName = getTypeName(outputType);
-    		String outputTypePackName = getPackageName(outputType);
-			if (!outputTypePackName.equals("xsd") && !outputTypePackName.equals(typePackage))
-				outputTypeName = outputTypePackName+"."+outputTypeName;
-    		boolean outputIsArray = isArrayOutput(operation, outputProperty.as(Property.class));
-    		if (outputIsArray)
-    			outputTypeName += "[]";
-    		if (outputProperty.canAs(DatatypeProperty.class))
-    			outputTypeName += " '"+DTAUtilities.getLabel(outputProperty)+"'";
-    	} else
-    		outputTypeName = "null";
+    	String dataTypeName = "null";
+    	if (dataProperty != null) {
+    		Resource dataType = dataProperty.getPropertyResourceValue(RDFS.range);
+    		dataTypeName = getTypeName(dataType);
+    		String dataTypePackName = getPackageName(dataType);
+			if (!dataTypePackName.equals("xsd") && !dataTypePackName.equals(typePackage))
+				dataTypeName = dataTypePackName+"."+dataTypeName;
+    		boolean dataIsArray = isArrayData(operation, dataProperty.as(Property.class));
+    		if (dataIsArray)
+    			dataTypeName += "[]";
+    		if (dataProperty.canAs(DatatypeProperty.class))
+    			dataTypeName += " '"+DTAUtilities.getLabel(dataProperty)+"'";
+    	}
 
     	String body = "{\n\treturn null;\n}";
 
@@ -1006,18 +1072,40 @@ public class DTACodeGenerator {
 			error=true;
 		}
    	
-    	IMethod aMethod = aType.getMethod(methodName, new String[]{Signature.createTypeSignature(inputTypeName, false)});
+		Map<String, Boolean> methodParamTypeNames = new LinkedHashMap<String, Boolean>();
+		methodParamTypeNames.put(parameterTypeName, Boolean.valueOf(isArrayParameter));
+		methodParamTypeNames.put("MuleMessage", Boolean.FALSE);
+		
+		List<String> methodParamSignatures = new ArrayList<String>();
+		for(String methodParamTypeName : methodParamTypeNames.keySet())
+			methodParamSignatures.add(Signature.createTypeSignature(methodParamTypeName, false));
+		IMethod aMethod = aType.getMethod(methodName, methodParamSignatures.toArray(new String[0]));
         
-       if (!aMethod.exists()) {
+        if (!aMethod.exists()) {
         	String genAnnot = "@Generated(\"true\")\n";
 
-        	String line1 = "Execute the operation (put your implementation here)";
-        	String line2 = "To report error code, call muleMessage.setOutboundProperty(\"code\", <integer>)";
-        	String line3 = "To report error description, call muleMessage.setOutboundProperty(\"description\", <string>)";
-			String comment = createComment(new String[]{line1, line2, line3, "", "@param "+inputName, "@param muleMessage", "@return "+outputTypeName+ " (or another Object if this processor is not terminal)"});
+    		List<String> lines = new ArrayList<String>();
+        	lines.add("Execute the operation (put your implementation here)");
+        	lines.add("To report error code, call muleMessage.setOutboundProperty(\"code\", <integer>)");
+        	lines.add("To report error description, call muleMessage.setOutboundProperty(\"description\", <string>)");
+        	lines.add("");
+    		for(String methodParamTypeName : methodParamTypeNames.keySet()) {
+    			String[] s = methodParamTypeName.split("\\.");
+    			lines.add("@param "+toCamelCase(s[s.length-1]));
+    		}
+        	lines.add("@return "+dataTypeName+ " (or another Object if this processor is not terminal)");
 
+        	String comment = createComment(lines.toArray(new String[0]));
+
+    		String methodParams = "";
+    		for(String methodParamTypeName : methodParamTypeNames.keySet()) {
+   				methodParams += (methodParams.length()>0) ? ", " : "";
+    			String[] s = methodParamTypeName.split("\\.");
+    			methodParams += methodParamTypeName+(methodParamTypeNames.get(methodParamTypeName)? "[] ":" ")+toCamelCase(s[s.length-1]);
+    		}
+    		
 	        try {
-	        	aMethod = aType.createMethod(comment+genAnnot+"private Object "+methodName+"("+inputTypeName+" "+inputName+", MuleMessage muleMessage) throws Exception "+body, null, true, null);
+	        	aMethod = aType.createMethod(comment+genAnnot+"private Object "+methodName+"("+methodParams+") throws Exception "+body, null, true, null);
 			} catch (Exception e) {
 				Activator.getDefault().log("Error creating Java type", e);
 				error=true;
@@ -1109,8 +1197,8 @@ public class DTACodeGenerator {
     	return false;
     }
 
-    public static boolean isArrayOutput(Resource type, Property property) {
-    	Restriction restriction = DTAUtilities.getRestriction(type, DTA.outputRestriction, property);
+    public static boolean isArrayData(Resource type, Property property) {
+    	Restriction restriction = DTAUtilities.getRestriction(type, DTA.dataRestriction, property);
     	return restriction==null || restriction.isMinCardinalityRestriction();
     }
 
@@ -1145,4 +1233,12 @@ public class DTACodeGenerator {
 		return false;
 	}
 	
+	private boolean isSource(Resource resource) {
+		return (DTAUtilities.isOperation(resource) && !DTAUtilities.isPublish(resource)) || DTAUtilities.isSubscribe(resource);
+	}
+	
+	private boolean isProcessor(Resource resource) {
+		return (DTAUtilities.isRequest(resource) && !DTAUtilities.isSubscribe(resource)) || DTAUtilities.isPublish(resource);
+	}
+
 }

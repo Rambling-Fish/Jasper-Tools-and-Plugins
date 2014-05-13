@@ -53,7 +53,7 @@ public class DTAClassEditPart2 extends DTABrowseNodeEditPart {
 		connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.subClassOf, getOntClass()).toList());
 		if (!RDFS.Literal.equals(getOntClass()))
 			connections.addAll(getOntClass().getOntModel().listStatements(null, RDFS.range, getOntClass()).toList());
-		connections.addAll(getOntClass().getOntModel().listStatements(null, DTA.input, getOntClass()).toList());
+		connections.addAll(getOntClass().getOntModel().listStatements(null, DTA.parameter, getOntClass()).toList());
 		return connections;
 	}
 	

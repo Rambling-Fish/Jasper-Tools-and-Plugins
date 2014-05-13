@@ -127,14 +127,14 @@ public class DTAUtilities {
 		return properties;
 	}
 
-	public static OntClass getInput(Resource operation) {
-		Resource input = operation.getPropertyResourceValue(DTA.input);
-		return (input!=null) ? input.as(OntClass.class) : null;
+	public static OntClass getParameter(Resource operation) {
+		Resource parameter = operation.getPropertyResourceValue(DTA.parameter);
+		return (parameter!=null) ? parameter.as(OntClass.class) : null;
 	}
 
-	public static OntProperty getOutput(Resource operation) {
-		Resource output = operation.getPropertyResourceValue(DTA.output);
-		return (output!=null) ? output.as(OntProperty.class) : null;
+	public static OntProperty getData(Resource operation) {
+		Resource data = operation.getPropertyResourceValue(DTA.data);
+		return (data!=null) ? data.as(OntProperty.class) : null;
 	}
 
 	public static List<OntClass> listSelfAndAllSubClasses(Resource type) {
@@ -418,8 +418,7 @@ public class DTAUtilities {
     }
     
     public static String getUniqueDestination(Resource dta, Resource op) {
-		String s = dta.getLocalName()+"/"+op.getLocalName()+"/"+UUID.randomUUID().toString();
-		return s.toLowerCase();
+		return dta.getLocalName()+"/"+op.getLocalName()+"/"+UUID.randomUUID().toString();
     }
     
     public static String getStringValue(Resource r, Property p) {
@@ -518,6 +517,14 @@ public class DTAUtilities {
     
     public static boolean isPublish(Resource operation) {
     	return DTA.Publish.equals(operation.getPropertyResourceValue(DTA.kind)); 
+    }
+
+    public static boolean isSubscribe(Resource request) {
+    	return DTA.Subscribe.equals(request.getPropertyResourceValue(DTA.kind)); 
+    }
+
+    public static boolean hasDestination(Resource r) {
+    	return (isOperation(r) && !isPublish(r)) || isSubscribe(r);
     }
 
     public static Set<Property> listAllEquivalentProperties(Property p) {

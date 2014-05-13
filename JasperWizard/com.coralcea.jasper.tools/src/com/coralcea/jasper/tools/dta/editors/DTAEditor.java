@@ -15,6 +15,7 @@ import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IPath;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.NullProgressMonitor;
 import org.eclipse.core.runtime.Status;
 import org.eclipse.core.runtime.SubProgressMonitor;
 import org.eclipse.gef.commands.Command;
@@ -398,8 +399,8 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 	protected boolean saveIfNeededBefore(String action) {
 		if (isDirty()) {
 			MessageDialog dialog = new MessageDialog(getSite().getShell(), action, null, "The model needs to be saved before proceeding with this action. Is that OK?", MessageDialog.CONFIRM, new String[]{"OK", "Cancel"}, 0);
-			if (dialog.open() == 0) {
-				doSave(null);
+			if (dialog.open() == MessageDialog.OK) {
+				doSave(new NullProgressMonitor());
 				return true;
 			}
 			return false;

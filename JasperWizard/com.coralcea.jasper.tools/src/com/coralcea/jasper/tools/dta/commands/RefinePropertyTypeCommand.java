@@ -29,14 +29,14 @@ public class RefinePropertyTypeCommand extends DTACommand {
 
 	@Override
 	public void prepare() {
-		Restriction r = DTAUtilities.getDirectRestriction(element, DTA.inputRestriction, property);
+		Restriction r = DTAUtilities.getDirectRestriction(element, DTA.parameterRestriction, property);
 		
 		if (DTA.None.equals(newType) || newType.equals(property.getRange())) {
 			if (r!=null)
 				oldStatements = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		} else if (r==null) {
 			r = element.getOntModel().createAllValuesFromRestriction(null, property, newType);
-			element.getOntModel().add(element, DTA.inputRestriction, r);
+			element.getOntModel().add(element, DTA.parameterRestriction, r);
 			newStatements = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		} else {
 			oldStatements = element.getOntModel().listStatements(r, OWL.allValuesFrom, (RDFNode)null).toList();

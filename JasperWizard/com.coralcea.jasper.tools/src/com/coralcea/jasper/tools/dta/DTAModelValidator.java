@@ -82,19 +82,19 @@ public class DTAModelValidator {
 	}
 
 	private void validateOperation(IFile file, Resource operation) throws CoreException {
-		if (!operation.hasProperty(DTA.input))
-			log(file, operation, "does not have an input type", IMarker.SEVERITY_ERROR);
+		if (!operation.hasProperty(DTA.parameter))
+			log(file, operation, "does not have a parameter specified", IMarker.SEVERITY_ERROR);
 		
-		if (DTAUtilities.isGet(operation) && !operation.hasProperty(DTA.output))
-			log(file, operation, "does not have an output property", IMarker.SEVERITY_ERROR);
+		if (DTAUtilities.isGet(operation) && !operation.hasProperty(DTA.data))
+			log(file, operation, "does not have data specified", IMarker.SEVERITY_ERROR);
 	}	
 	
 	private void validateRequest(IFile file, Resource request) throws CoreException {
-		if (!request.hasProperty(DTA.input))
-			log(file, request, "does not have an input type", IMarker.SEVERITY_ERROR);
+		if (!DTAUtilities.isSubscribe(request) && !request.hasProperty(DTA.parameter))
+			log(file, request, "does not have a parameter specified", IMarker.SEVERITY_ERROR);
 		
-		if (DTAUtilities.isGet(request) && !request.hasProperty(DTA.output))
-			log(file, request, "does not have an output property", IMarker.SEVERITY_ERROR);
+		if (!DTAUtilities.isPost(request) && !request.hasProperty(DTA.data))
+			log(file, request, "does not have data specified", IMarker.SEVERITY_ERROR);
 	}	
 
 	private void validateType(IFile file, Resource type) throws CoreException {

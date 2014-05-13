@@ -57,7 +57,7 @@ public class DTAPropertyEditPart2 extends DTABrowseNodeEditPart {
 		connections.addAll(getOntProperty().getOntModel().listStatements(null, RDFS.subPropertyOf, getOntProperty()).toList());
 		connections.addAll(getOntProperty().getOntModel().listStatements(null, OWL.equivalentProperty, getOntProperty()).toList());
 		connections.addAll(getOntProperty().getOntModel().listStatements(getOntProperty(), RDFS.domain, (RDFNode)null).toList());
-		connections.addAll(getOntProperty().getOntModel().listStatements(null, DTA.output, getOntProperty()).toList());
+		connections.addAll(getOntProperty().getOntModel().listStatements(null, DTA.data, getOntProperty()).toList());
 		return connections;
 	}
 

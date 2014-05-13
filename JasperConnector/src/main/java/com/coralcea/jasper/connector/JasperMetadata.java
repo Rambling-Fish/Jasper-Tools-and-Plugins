@@ -97,18 +97,16 @@ public class JasperMetadata extends JasperConstants {
 		for(ResIterator i = subsetModel.listSubjectsWithProperty(RDF.type, OWL.Ontology); i.hasNext();)
 			statementsToRemove.addAll(i.next().listProperties().toSet());
 
-		// Remove non-publish request statements
+		// Remove request statements
 		for(StmtIterator i = subsetModel.listStatements(null, DTA_request, (RDFNode)null); i.hasNext();) {
 			Statement s1 = i.next();
 			Resource request = s1.getObject().asResource();
-			if (!request.hasProperty(DTA_kind, DTA_Publish)) {
-				statementsToRemove.add(s1);
-				for(StmtIterator j = request.listProperties(); j.hasNext();) {
-					Statement s2 = j.next();
-					statementsToRemove.add(s2);
-					if (s2.getObject().isAnon())
-						statementsToRemove.addAll(s2.getObject().asResource().listProperties().toSet());
-				}
+			statementsToRemove.add(s1);
+			for(StmtIterator j = request.listProperties(); j.hasNext();) {
+				Statement s2 = j.next();
+				statementsToRemove.add(s2);
+				if (s2.getObject().isAnon())
+					statementsToRemove.addAll(s2.getObject().asResource().listProperties().toSet());
 			}
 		}
 		
@@ -132,10 +130,10 @@ public class JasperMetadata extends JasperConstants {
 		for(ResIterator i = model.getBaseModel().listSubjectsWithProperty(RDF.type, DTA_DTA); i.hasNext();) {
 			Resource dta = model.getResource(i.next().getURI());
 			for(Resource operation : listObjects(dta, DTA_operation, Resource.class)) {
-		        if (operation.hasProperty(DTA_input))
-					collectType(operation.getPropertyResourceValue(DTA_input), resources);
-				if (operation.hasProperty(DTA_output))
-		        	collectProperty(operation.getPropertyResourceValue(DTA_output), resources);
+		        if (operation.hasProperty(DTA_parameter))
+					collectType(operation.getPropertyResourceValue(DTA_parameter), resources);
+				if (operation.hasProperty(DTA_data))
+		        	collectProperty(operation.getPropertyResourceValue(DTA_data), resources);
 			}
 		}
 		
@@ -213,30 +211,43 @@ public class JasperMetadata extends JasperConstants {
         return values;
     }
 
-    public static boolean isDatatype(Resource resource) {
+    private static boolean isDatatype(Resource resource) {
     	return XSD.getURI().equals(resource.getNameSpace()) || RDFS.Literal.equals(resource);
 	}
 
-    public String getDestination(OntResource operation) {
+	public Set<Resource> listRDFTypes(Resource r) {
+		return listObjects(r, RDF.type, Resource.class);
+	}
+
+	public boolean isOfType(Resource resource, Resource type) {
+		Set<Resource> actualTypes = listRDFTypes(resource);
+		return actualTypes.contains(type);
+    }
+    
+	public boolean isOfKind(Resource operation, Resource kind) {
+		return kind.equals(operation.getPropertyResourceValue(DTA_kind));
+    }
+
+	public String getDestination(OntResource operation) {
     	RDFNode value = operation.getPropertyValue(JasperConstants.DTA_destination);
 		return value!=null ? value.asLiteral().getString() : null;
     }
 
-    public Resource getInput(OntResource operation) {
-    	return operation.getPropertyResourceValue(JasperConstants.DTA_input);
+    public Resource getParameter(OntResource operation) {
+    	return operation.getPropertyResourceValue(JasperConstants.DTA_parameter);
     }
 
-	public Resource getOutput(OntResource operation) {
-    	return operation.getPropertyResourceValue(JasperConstants.DTA_output);
+	public Resource getData(OntResource operation) {
+    	return operation.getPropertyResourceValue(JasperConstants.DTA_data);
    }
 
-	public Resource getOutputType(OntResource operation) {
-    	Resource value = operation.getPropertyResourceValue(JasperConstants.DTA_output);
+	public Resource getDataType(OntResource operation) {
+    	Resource value = operation.getPropertyResourceValue(JasperConstants.DTA_data);
 		return value!=null ? value.as(OntProperty.class).getRange() : null;
     }
 
-	public boolean hasMultivaluedOutput(OntResource operation) {
-		Resource value = operation.getPropertyResourceValue(JasperConstants.DTA_outputRestriction);
+	public boolean hasMultivaluedData(OntResource operation) {
+		Resource value = operation.getPropertyResourceValue(JasperConstants.DTA_dataRestriction);
 		return value!=null ? value.canAs(MinCardinalityRestriction.class) : true;
     }
 
@@ -253,25 +264,25 @@ public class JasperMetadata extends JasperConstants {
     	RDFNode value = model.listOntologies().next().getPropertyValue(JasperConstants.DTA_basepackage);
 		return value!=null ? value.asLiteral().getString() : "";
     }
-
-	public Class<?> getInputTypeOfOperation(OntResource operation) throws ClassNotFoundException {
-		Resource type = getInput(operation);
+    
+	public Class<?> getOperationParameterClass(OntResource operation) throws ClassNotFoundException {
+		Resource type = getParameter(operation);
 		return type != null ? getType(type, false) : null;
 	}
 	
-	public Class<?> getOutputTypeOfOperation(OntResource operation) throws ClassNotFoundException {
-		Resource type = getOutputType(operation);
-		return type != null ? getType(type, hasMultivaluedOutput(operation)) : null;
+	public Class<?> getOperationDataClass(OntResource operation) throws ClassNotFoundException {
+		Resource type = getDataType(operation);
+		return type != null ? getType(type, hasMultivaluedData(operation)) : null;
 	}
 
-	public Class<?> getInputTypeOfRequest(OntResource request) throws ClassNotFoundException {
+	public Class<?> getRequestParameterClass(OntResource request) throws ClassNotFoundException {
 		Class<?> type = getType(request, false);
-		return type != null ? loadClass(type.getName()+"$Parameters", false) : null;
+		return type != null ? loadClass(type.getName()+"$Parameter", false) : null;
 	}
 	
-	public Class<?> getOutputTypeOfRequest(OntResource request) throws ClassNotFoundException {
-		Resource type = getOutputType(request);
-		return type != null ? getType(type, hasMultivaluedOutput(request)) : null;
+	public Class<?> getRequestDataClass(OntResource request) throws ClassNotFoundException {
+		Resource type = getDataType(request);
+		return type != null ? getType(type, hasMultivaluedData(request)) : null;
 	}
 
 	public Callable getCallable(OntResource operation) throws Exception {

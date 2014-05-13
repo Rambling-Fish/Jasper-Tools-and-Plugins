@@ -17,16 +17,12 @@
 	
 	<jms:activemq-connector name="Active_MQ" brokerURL="tcp://0.0.0.0:61616" validateConnections="true"/>
 
-    <flow name="testUpdateHRData">
-        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#updateHRData"/>
-    </flow>
-
     <flow name="testRequestMSData">
         <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestMSData"/>
     </flow>
 
-    <flow name="testRequestHRData">
-        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestHRData"/>
+    <flow name="testUpdateHRData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#updateHRData"/>
     </flow>
 
     <flow name="testRequestBpm">
@@ -38,15 +34,12 @@
         </catch-exception-strategy>
     </flow>
 
-    <flow name="testPublishHRData">
-        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#publishHRData"/>
+    <flow name="testRequestHRData">
+        <jasper:send config-ref="Jasper" request="http://coralcea.ca/heartratedta#requestHRData"/>
     </flow>
 
-    <flow name="testPostHRData">
-        <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#postHRData"/>
-         <component>
-            <singleton-object class="com.coralcea.jasper.connector.tests.generated.PostHRData"/>
-        </component>
+    <flow name="testPublishHRData">
+        <jasper:publish config-ref="Jasper" operation="http://coralcea.ca/heartratedta#publishHRData"/>
     </flow>
 
     <flow name="testGetHRData">
@@ -56,10 +49,24 @@
         </component>
     </flow>
 
+    <flow name="testPostHRData">
+        <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#postHRData"/>
+         <component>
+            <singleton-object class="com.coralcea.jasper.connector.tests.generated.PostHRData"/>
+        </component>
+    </flow>
+
     <flow name="testGetBpm">
         <jasper:execute config-ref="Jasper" operation="http://coralcea.ca/heartratedta#getBpm"/>
         <component>
             <singleton-object class="com.coralcea.jasper.connector.tests.generated.GetBpm"/>
+        </component>
+    </flow>
+
+    <flow name="subscribeHRData">
+        <jasper:subscribe config-ref="Jasper" request="http://coralcea.ca/heartratedta#subscribeHRData"/>
+         <component>
+            <singleton-object class="com.coralcea.jasper.connector.tests.generated.SubscribeHRData"/>
         </component>
     </flow>
 
