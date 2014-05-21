@@ -60,6 +60,7 @@ import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.OWL;
+import com.hp.hpl.jena.vocabulary.RDF;
 
 public class DTADownloadJasperModelDialog extends Dialog {
 
@@ -190,7 +191,13 @@ public class DTADownloadJasperModelDialog extends Dialog {
 			Model m = ModelFactory.createDefaultModel();
 			m.read(new ByteArrayInputStream(submodel.getBytes()), null, DTA.FORMAT);
 			model.add(m);
-			nsPrefixMap.putAll(m.getNsPrefixMap());
+			
+			Map<String, String> nsPrefixes = m.getNsPrefixMap();
+			String uri = nsPrefixes.remove("");
+			Resource ontology = m.listSubjectsWithProperty(RDF.type, OWL.Ontology).next();
+			if (ontology != null)
+				nsPrefixes.put(ontology.getLocalName(), uri);
+			nsPrefixMap.putAll(nsPrefixes);
 		}
 		
 		model.setNsPrefixes(nsPrefixMap);
