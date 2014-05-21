@@ -4,6 +4,8 @@ import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -182,11 +184,16 @@ public class DTADownloadJasperModelDialog extends Dialog {
 		Ontology ont = model.createOntology(JASPER_NS);
 		ont.setPropertyValue(DTA.isLibrary, model.createTypedLiteral(true));
 		
+		Map<String, String> nsPrefixMap = new HashMap<String, String>();
+		
 		for (String submodel : submodels) {
 			Model m = ModelFactory.createDefaultModel();
 			m.read(new ByteArrayInputStream(submodel.getBytes()), null, DTA.FORMAT);
 			model.add(m);
+			nsPrefixMap.putAll(m.getNsPrefixMap());
 		}
+		
+		model.setNsPrefixes(nsPrefixMap);
 		
 		IFile file = editor.getFile().getParent().getFile(Path.fromOSString(JASPER_FILE));
 		DTACore.saveModel(model, file, true, monitor);
@@ -289,7 +296,7 @@ public class DTADownloadJasperModelDialog extends Dialog {
 	}
 	
     protected void updateImportPolicy(IProgressMonitor monitor) {
-		IFile policy = (IFile) editor.getFile().getParent().findMember(DTA.IMPORT_POLICY);
+		IFile policy = (IFile) editor.getFile().getParent().getFile(Path.fromOSString(DTA.IMPORT_POLICY));
 		Model imports = DTACore.loadImportPolicyModel(policy);
 		DTACore.addImportPolicyEntry(imports, JASPER_NS, "file:"+JASPER_FILE);
 		DTACore.saveImportPolicyModel(imports, policy);
