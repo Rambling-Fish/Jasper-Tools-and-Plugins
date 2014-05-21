@@ -391,7 +391,7 @@ public class DTADownloadJasperModelDialog extends Dialog {
 		String username = credentials.vendor+":"+credentials.application+":"+credentials.version+":"+license.getDeploymentId();
 		String password = JAuthHelper.bytesToHex(license.getLicenseKey());
 		
-		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory("failover://("+credentials.url+")");
+		ActiveMQConnectionFactory connectionFactory = new ActiveMQConnectionFactory(credentials.url);
 		Connection connection = connectionFactory.createConnection(username, password);
 	    connection.start();
 	    
