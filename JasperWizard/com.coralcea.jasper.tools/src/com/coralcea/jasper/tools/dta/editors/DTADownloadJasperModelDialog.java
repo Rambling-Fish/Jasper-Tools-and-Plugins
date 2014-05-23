@@ -6,6 +6,7 @@ import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.TimeZone;
 import java.util.UUID;
 
@@ -52,6 +53,7 @@ import org.jasper.jLib.jCommons.admin.JasperAdminMessage.Type;
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTACore;
+import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.AddPropertyCommand;
 import com.coralcea.jasper.tools.dta.commands.ChangeImportLoadCommand;
 import com.hp.hpl.jena.ontology.OntModel;
@@ -194,9 +196,9 @@ public class DTADownloadJasperModelDialog extends Dialog {
 			
 			Map<String, String> nsPrefixes = m.getNsPrefixMap();
 			String uri = nsPrefixes.remove("");
-			Resource ontology = m.listSubjectsWithProperty(RDF.type, OWL.Ontology).next();
-			if (ontology != null)
-				nsPrefixes.put(ontology.getLocalName(), uri);
+			Set<Resource> ontology = DTAUtilities.listSubjects(RDF.type, OWL.Ontology);
+			if (ontology != null && !ontology.isEmpty())
+				nsPrefixes.put(ontology.iterator().next().getLocalName(), uri);
 			nsPrefixMap.putAll(nsPrefixes);
 		}
 		
