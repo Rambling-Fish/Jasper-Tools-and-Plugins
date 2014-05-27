@@ -200,7 +200,7 @@ public class DTADownloadJasperModelDialog extends Dialog {
 				String prefix = entry.getKey();
 				String uri = entry.getValue();
 				if (prefix.equals(""))
-					prefix = uri.substring(uri.lastIndexOf('/', uri.length()-1)+1, uri.length()-1);
+					prefix = uri.substring(uri.lastIndexOf('/', uri.length()-2)+1, uri.length()-1);
 				if (nsPrefixMap.containsKey(prefix) && !nsPrefixMap.get(prefix).equals(uri)) {
 					prefix += ++i;
 					conflicts.add(prefix+" : "+uri);
@@ -215,7 +215,7 @@ public class DTADownloadJasperModelDialog extends Dialog {
 		DTACore.saveModel(model, file, true, monitor);
 		
 		if (!conflicts.isEmpty()) {
-			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.ERROR, "The following namespaces have modified prefixes due to conflicts", null);
+			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.WARNING, "The following namespaces have modified prefixes due to conflicts", null);
 			for(String conflict : conflicts)
 				status.add(new Status(Status.ERROR, Activator.PLUGIN_ID, conflict));
 			StatusManager.getManager().handle(status, StatusManager.BLOCK);
