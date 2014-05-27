@@ -2,9 +2,11 @@ package com.coralcea.jasper.tools.dta.editors;
 
 import java.io.ByteArrayInputStream;
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.TimeZone;
 import java.util.UUID;
@@ -25,6 +27,7 @@ import org.eclipse.core.resources.IFile;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.core.runtime.IProgressMonitor;
 import org.eclipse.core.runtime.IStatus;
+import org.eclipse.core.runtime.MultiStatus;
 import org.eclipse.core.runtime.Path;
 import org.eclipse.core.runtime.QualifiedName;
 import org.eclipse.core.runtime.Status;
@@ -58,10 +61,8 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Model;
 import com.hp.hpl.jena.rdf.model.ModelFactory;
-import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.vocabulary.OWL;
-import com.hp.hpl.jena.vocabulary.RDF;
 
 public class DTADownloadJasperModelDialog extends Dialog {
 
@@ -186,25 +187,40 @@ public class DTADownloadJasperModelDialog extends Dialog {
 		Ontology ont = model.createOntology(JASPER_NS);
 		ont.setPropertyValue(DTA.isLibrary, model.createTypedLiteral(true));
 		
+		int i = 0;
+		List<String> conflicts = new ArrayList<String>();
 		Map<String, String> nsPrefixMap = new HashMap<String, String>();
-		
+
 		for (String submodel : submodels) {
 			Model m = ModelFactory.createDefaultModel();
 			m.read(new ByteArrayInputStream(submodel.getBytes()), null, DTA.FORMAT);
 			model.add(m);
 			
-			Map<String, String> nsPrefixes = m.getNsPrefixMap();
-			String uri = nsPrefixes.remove("");
-			ResIterator dta = m.listResourcesWithProperty(RDF.type, DTA.DTA);
-			if (dta.hasNext())
-				nsPrefixes.put(dta.next().getLocalName(), uri);
-			nsPrefixMap.putAll(nsPrefixes);
+			for (Map.Entry<String, String> entry : m.getNsPrefixMap().entrySet()) {
+				String prefix = entry.getKey();
+				String uri = entry.getValue();
+				if (prefix.equals(""))
+					prefix = uri.substring(uri.lastIndexOf('/', uri.length()-1)+1, uri.length()-1);
+				if (nsPrefixMap.containsKey(prefix) && !nsPrefixMap.get(prefix).equals(uri)) {
+					prefix += ++i;
+					conflicts.add(prefix+" : "+uri);
+				}
+				nsPrefixMap.put(prefix, uri);
+			}
 		}
 		
 		model.setNsPrefixes(nsPrefixMap);
 		
 		IFile file = editor.getFile().getParent().getFile(Path.fromOSString(JASPER_FILE));
 		DTACore.saveModel(model, file, true, monitor);
+		
+		if (!conflicts.isEmpty()) {
+			MultiStatus status = new MultiStatus(Activator.PLUGIN_ID, Status.ERROR, "The following namespaces have modified prefixes due to conflicts", null);
+			for(String conflict : conflicts)
+				status.add(new Status(Status.ERROR, Activator.PLUGIN_ID, conflict));
+			StatusManager.getManager().handle(status, StatusManager.BLOCK);
+		}
+		
 		return true;
 	}
 
