@@ -167,7 +167,7 @@ public class JasperConnection {
 	}
 	
     private String getAdminEndpoint() {
-		return "jms."+vendor+"."+application+"."+version+"."+id+".admin.queue";
+		return license.getAdminQueue();
 	}
     
 }
