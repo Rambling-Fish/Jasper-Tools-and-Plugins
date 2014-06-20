@@ -34,14 +34,20 @@ public class JasperContext {
 	public MuleMessage toMuleMessage(TextMessage jmsMsg) throws Exception {
 		String encoding = context.getConfiguration().getDefaultEncoding();
         MuleMessage muleMsg = toMuleMessage.create(jmsMsg, encoding);
-        muleMsg.setCorrelationId(jmsMsg.getJMSCorrelationID());
         muleMsg.setReplyTo(null);
+        if (jmsMsg.getJMSCorrelationID() != null)
+        	muleMsg.setCorrelationId(jmsMsg.getJMSCorrelationID());
+        else
+        	muleMsg.setCorrelationId(UUID.randomUUID().toString());
         return muleMsg;
 	}
 	
 	public TextMessage toJMSMessage(MuleMessage muleMsg, Session session) throws Exception {
 		TextMessage jmsMessage = session.createTextMessage();
-		jmsMessage.setJMSCorrelationID(UUID.randomUUID().toString());
+        if (muleMsg.getCorrelationId() != null)
+        	jmsMessage.setJMSCorrelationID(muleMsg.getCorrelationId());
+        else
+        	jmsMessage.setJMSCorrelationID(UUID.randomUUID().toString());
         toJMSMessage.setJmsProperties(muleMsg, jmsMessage);
         return jmsMessage;
 	}

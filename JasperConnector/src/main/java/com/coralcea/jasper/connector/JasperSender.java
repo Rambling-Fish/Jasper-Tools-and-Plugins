@@ -117,7 +117,7 @@ public class JasperSender {
 		try {
 			response = jsonMapper.readValue(jmsMsg.getText(), JasperResponse.class);
 		} catch (Exception e) {
-			throw new Exception("Invalid resoinse received for request "+requestURI, e);
+			throw new Exception("Invalid response received for request "+requestURI, e);
 		}
 
 		int code = response.getCode();
@@ -129,8 +129,10 @@ public class JasperSender {
 		MuleMessage muleMsg = null;
 		if (dataType != null && response.getHeaders().get(JasperConstants.CONTENT_TYPE).equals(JasperConstants.JSON)) {
 			muleMsg = context.toMuleMessage(jmsMsg);
-			Object payload = jsonMapper.readValue(new String(response.getPayload()), dataType);
-			muleMsg.setPayload(payload);
+			if (response.getPayload() != null) {
+				Object payload = jsonMapper.readValue(new String(response.getPayload()), dataType);
+				muleMsg.setPayload(payload);
+			}
 		}
 		return muleMsg;
 	}

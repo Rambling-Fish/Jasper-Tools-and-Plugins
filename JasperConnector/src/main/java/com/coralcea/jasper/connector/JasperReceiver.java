@@ -114,7 +114,7 @@ public class JasperReceiver {
 
 		TextMessage jmsMsg = context.toJMSMessage(muleMsg, session);
 
-		if (dataType != null) {
+		if (dataType != null && content != null) {
 			if (dataType.isInstance(content)) {
 				String payload = jsonMapper.writeValueAsString(content);
 		        jmsMsg.setText(payload);
