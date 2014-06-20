@@ -64,7 +64,7 @@ public class DTACodeGenerator {
 	private static final String BASE_PACKAGE = "base";
 
 	public static boolean run(final IFile file, IProgressMonitor monitor) throws CoreException {
-		monitor.beginTask("Generatign code", 10);
+		monitor.beginTask("Generating code", 10);
 		
 		if (!DTAModelValidator.run(file, new SubProgressMonitor(monitor, 3), true)) {
 			monitor.done();
@@ -81,7 +81,7 @@ public class DTACodeGenerator {
 	}
 
 	private boolean generate(IFile file, IProgressMonitor monitor) {
-		monitor.beginTask("Generatign code", 10);
+		monitor.beginTask("Generating code", 10);
 
 		boolean error=false;
 

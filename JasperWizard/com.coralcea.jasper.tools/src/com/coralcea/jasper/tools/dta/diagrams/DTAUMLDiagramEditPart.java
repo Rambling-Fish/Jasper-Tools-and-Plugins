@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Set;
 
 import org.eclipse.draw2d.Animation;
+import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.ConnectionLayer;
 import org.eclipse.draw2d.FanRouter;
 import org.eclipse.draw2d.Figure;
@@ -160,7 +161,18 @@ public class DTAUMLDiagramEditPart extends DTAResourceNodeEditPart {
 			return null;
 		}
 		protected EditPolicy createChildEditPolicy(EditPart child) {
-			return new NonResizableEditPolicy();
+			return new NonResizableEditPolicy() {
+				protected void showSelection() {
+					super.showSelection();
+					DTANodeFigure f = (DTANodeFigure) getHostFigure();
+					f.getLabel().setBackgroundColor(ColorConstants.menuBackgroundSelected);
+				}			
+				protected void hideSelection() {
+					super.hideSelection();
+					DTANodeFigure f = (DTANodeFigure) getHostFigure();
+					f.getLabel().setBackgroundColor(null);
+				}
+			};
 		}
 		protected Command createChangeConstraintCommand(ChangeBoundsRequest request, EditPart child, Object constraint) {
 			return new TransientSetLayoutConstraintCommand((GraphicalEditPart)getHost(), (GraphicalEditPart)child, constraint);

@@ -35,6 +35,7 @@ import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.rdf.model.Property;
+import com.hp.hpl.jena.rdf.model.ResIterator;
 import com.hp.hpl.jena.rdf.model.Resource;
 import com.hp.hpl.jena.rdf.model.Statement;
 import com.hp.hpl.jena.rdf.model.StmtIterator;
@@ -122,6 +123,16 @@ public class DTABrowseDiagramEditPart extends DTAResourceNodeEditPart  {
 			modelConnections.add(s);
 			relevantChildren.add(subject);
 			relevantChildren.add(object);
+		}
+		
+		if ("Types".equals(filter)) {
+			for (ResIterator j = model.listSubjectsWithProperty(RDF.type, OWL.Class); j.hasNext();)
+				relevantChildren.add(j.next().as(OntResource.class));
+		} else if ("Properties".equals(filter)) {
+			for (ResIterator j = model.listSubjectsWithProperty(RDF.type, OWL.ObjectProperty); j.hasNext();)
+				relevantChildren.add(j.next().as(OntResource.class));
+			for (ResIterator j = model.listSubjectsWithProperty(RDF.type, OWL.DatatypeProperty); j.hasNext();)
+				relevantChildren.add(j.next().as(OntResource.class));
 		}
 			
 		if (filter == null) {

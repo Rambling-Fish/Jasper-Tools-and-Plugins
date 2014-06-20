@@ -19,6 +19,7 @@ import org.eclipse.draw2d.ChopboxAnchor;
 import org.eclipse.draw2d.ConnectionAnchor;
 import org.eclipse.draw2d.EllipseAnchor;
 import org.eclipse.draw2d.Figure;
+import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.geometry.Point;
 
 public class DTANodeFigure extends Figure implements DTANode {
@@ -77,4 +78,8 @@ public class DTANodeFigure extends Figure implements DTANode {
 		return closest;
 	}
 
+	public Label getLabel() {
+		return (Label) getChildren().get(0);
+	}
+	
 }

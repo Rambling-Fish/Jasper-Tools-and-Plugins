@@ -52,7 +52,7 @@ import org.eclipse.ui.forms.widgets.Section;
 
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.Images;
-import com.coralcea.jasper.tools.dta.Cardinality;
+import com.coralcea.jasper.tools.dta.DTACardinality;
 import com.coralcea.jasper.tools.dta.DTA;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.AddPropertyCommand;
@@ -270,12 +270,12 @@ public class DTAPropertiesViewer extends DTAViewer {
 		
 		addURI(group, element);
 		addDescription(group, element);
-		addType(group, element);
 
+		addPropertyTypesSection(parent, element);
+		addPropertyClassesSection(parent, element);
 		addEquivalentPropertiesSection(parent, element);
 		addSuperPropertiesSection(parent, element);
 		addSubPropertiesSection(parent, element);
-		addPropertyClassesSection(parent, element);
 	}
 
 	private void buildDTAContents(Composite parent, OntResource element) {
@@ -452,43 +452,44 @@ public class DTAPropertiesViewer extends DTAViewer {
 		});
 	}
 
-	private void addType(final Composite group, final OntProperty element) {
-        createLabel(group, "Type:", "The type of this "+DTAUtilities.getKind(element));
-        
-        Composite linkGroup = createComposite(group, 2);
-        
-        createLink(linkGroup, element.getRange());
-        if (DTAUtilities.isDefinedByBase(element)) {
-	        Button button = createButton(linkGroup, SWT.ARROW|SWT.DOWN, "");
-	        button.addListener(SWT.Selection, new Listener() {
-				public void handleEvent(Event event) {
-					CompoundCommand cc = new CompoundCommand();
-					Collection<Resource> types = DTAUtilities.listAvailableTypes(element.getOntModel());
-					Resource type = DTASelectionDialog.run("Select Type", element.getOntModel(), types, true, true);
-					if (DTA.New.equals(type)) {
-						String value = promptForNewURI(group.getShell(), "Type", element.getOntModel().getNsPrefixURI(""));
-						if (value != null) {
-							type = element.getOntModel().getResource(value);
-							if (!element.getOntModel().contains(type, RDF.type))
-								cc.add(new SetPropertyCommand(type.as(OntResource.class), RDF.type, OWL.Class));
-						} else
-							return;
-					}
-					if (type != null && !type.equals(element.getRange())) {
-						cc.add(new SetPropertyCommand(element, RDFS.range, DTA.None.equals(type) ? null : type));
-						if (element.isDatatypeProperty() && (DTA.None.equals(type) || !DTAUtilities.isDatatype(type))) {
-							cc.add(new RemovePropertyCommand(element, RDF.type, OWL.DatatypeProperty));
-							cc.add(new AddPropertyCommand(element, RDF.type, OWL.ObjectProperty));
-						}
-						else if (element.isObjectProperty() && !DTA.None.equals(type) && DTAUtilities.isDatatype(type)) {
-							cc.add(new RemovePropertyCommand(element, RDF.type, OWL.ObjectProperty));
-							cc.add(new AddPropertyCommand(element, RDF.type, OWL.DatatypeProperty));
-						}
-						getEditor().executeCommand(cc, true);
+	private void addPropertyTypesSection(final Composite parent, final OntProperty element) {
+        Section section = createSection(parent, "Types", "The types of this "+DTAUtilities.getKind(element));
+
+        ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+		createAddButton(toolbar, element.getOntModel(), "Type",  new Listener() {
+			public void handleEvent(Event event) {
+				CompoundCommand cc = new CompoundCommand();
+				Collection<Resource> types = DTAUtilities.listAvailableTypes(element.getOntModel());
+				Resource type = DTASelectionDialog.run("Select Type", element.getOntModel(), types, false, true);
+				if (DTA.New.equals(type)) {
+					String value = promptForNewURI(parent.getShell(), "Type", element.getOntModel().getNsPrefixURI(""));
+					if (value != null) {
+						type = element.getOntModel().getResource(value);
+						if (!element.getOntModel().contains(type, RDF.type))
+							cc.add(new SetPropertyCommand(type.as(OntResource.class), RDF.type, OWL.Class));
 					}
 				}
-			});
-        }
+				if (type != null && !element.hasRange(type)) {
+					cc.add(new AddPropertyCommand(element, RDFS.range, type));
+					getEditor().executeCommand(cc, true);
+				}
+			}
+		});
+		
+		Composite group = createComposite(section, 2);
+		section.setClient(group);
+		for (final OntResource i : DTAUtilities.sortOnLabel(element.listRange())) {
+			Link link = createLink(group, i);
+			if (DTAUtilities.isDefinedByBase(element, RDFS.range, i))
+				createRemoveButton(group, i, new HyperlinkAdapter() {
+					public void linkActivated(HyperlinkEvent e) {
+						getEditor().executeCommand(new RemovePropertyCommand(element, RDFS.range, i), true);
+					}
+				});
+			else
+				((GridData)link.getLayoutData()).horizontalSpan = 2;
+		}
 	}
 
 	private void addParameter(final Composite group, final OntResource element) {
@@ -565,7 +566,7 @@ public class DTAPropertiesViewer extends DTAViewer {
         	Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.dataRestriction, data);
         	initialValue = DTAUtilities.getCardinality(initial);
         }
-        ComboViewer combo = createCombo(linkGroup, SWT.READ_ONLY, null, Cardinality.toArray(), initialValue);
+        ComboViewer combo = createCombo(linkGroup, SWT.READ_ONLY, null, DTACardinality.toArray(), initialValue);
 		combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element) && data!=null);
 		combo.addSelectionChangedListener(new ISelectionChangedListener() {
 			public void selectionChanged(SelectionChangedEvent event) {
@@ -927,7 +928,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 			
 			Restriction initial = DTAUtilities.getDirectRestriction(element, DTA.restriction, i);
 		    String initialValue = DTAUtilities.getCardinality(initial);
-			ComboViewer combo = createCombo(group, SWT.READ_ONLY, null, Cardinality.toArray(), initialValue);
+			ComboViewer combo = createCombo(group, SWT.READ_ONLY, null, DTACardinality.toArray(), initialValue);
 			combo.getControl().setLayoutData(new GridData());
 			combo.getControl().setEnabled(DTAUtilities.isDefinedByBase(element));
 			combo.addSelectionChangedListener(new ISelectionChangedListener() {

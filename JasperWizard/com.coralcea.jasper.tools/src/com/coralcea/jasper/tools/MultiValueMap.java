@@ -52,4 +52,8 @@ public class MultiValueMap<S, T> {
 	public int size() {
 		return map.size();
 	}
+
+	public boolean containsKey(S key) {
+		return map.containsKey(key);
+	}
 }

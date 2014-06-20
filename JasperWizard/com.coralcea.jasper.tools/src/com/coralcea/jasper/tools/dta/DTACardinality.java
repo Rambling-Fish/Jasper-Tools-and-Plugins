@@ -1,6 +1,6 @@
 package com.coralcea.jasper.tools.dta;
 
-public class Cardinality {
+public class DTACardinality {
 
 	public static final String ZERO_STAR = "";
 	public static final String ZERO_ONE = "[0..1]";

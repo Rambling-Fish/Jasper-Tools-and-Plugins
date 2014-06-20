@@ -154,7 +154,7 @@ public class DTAImportWizardPage extends WizardPage {
 				dialogChanged();
 			}
 		});
-		fileKind.setInput(new DTAImporter[]{new DTAOwlImporter(), new DTAXsdImporter(), new DTARdfImporter()});
+		fileKind.setInput(new DTAImporter[]{new DTAOwlImporter(), new DTARdfImporter(), new DTAXsdImporter(), new DTAXmlImporter(),  new DTAJsonImporter()});
 
 		initialize();
 		dialogChanged();

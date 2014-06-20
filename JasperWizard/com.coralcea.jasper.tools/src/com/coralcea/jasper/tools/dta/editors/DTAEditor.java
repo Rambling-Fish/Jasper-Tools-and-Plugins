@@ -234,8 +234,6 @@ public class DTAEditor extends MultiPageEditorPart implements IResourceChangeLis
 		createSourcePage();
 		
 		setModel(model);
-		
-		getSite().setSelectionProvider(new DTASelectionProvider(this));
 	}
 	
 	@Override

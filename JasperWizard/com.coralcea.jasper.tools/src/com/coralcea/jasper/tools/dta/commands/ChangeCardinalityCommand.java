@@ -2,7 +2,7 @@ package com.coralcea.jasper.tools.dta.commands;
 
 import java.util.List;
 
-import com.coralcea.jasper.tools.dta.Cardinality;
+import com.coralcea.jasper.tools.dta.DTACardinality;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.ontology.Restriction;
@@ -33,11 +33,11 @@ public class ChangeCardinalityCommand extends DTACommand {
 			oldRestriction = DTAUtilities.listDirectStatementsOn(element.getOntModel().getBaseModel(), r);
 		
 		r = null;
-		if (value.equals(Cardinality.ZERO_ONE))
+		if (value.equals(DTACardinality.ZERO_ONE))
 			r = element.getOntModel().createMaxCardinalityRestriction(null, property, 1);
-		else if (value.equals(Cardinality.ONE_STAR))
+		else if (value.equals(DTACardinality.ONE_STAR))
 			r = element.getOntModel().createMinCardinalityRestriction(null, property, 1);
-		else if (value.equals(Cardinality.ONE_ONE))
+		else if (value.equals(DTACardinality.ONE_ONE))
 			r = element.getOntModel().createCardinalityRestriction(null, property, 1);
 		if (r!=null) {
 			element.addProperty(kind, r);

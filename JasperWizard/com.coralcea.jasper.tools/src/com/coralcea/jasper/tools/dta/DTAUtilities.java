@@ -270,6 +270,7 @@ public class DTAUtilities {
 
 	public static Collection<Resource> listAvailableTypes(OntModel model) {
 		Collection<Resource> types = new ArrayList<Resource>(DTAUtilities.listClasses(model));
+		types.add(RDFS.Resource);
 		types.addAll(primitiveSet);
 		return types;
 	}
@@ -491,13 +492,13 @@ public class DTAUtilities {
 
     public static String getCardinality(Restriction restriction) {
     	if (restriction == null)
-    		return Cardinality.ZERO_STAR;
+    		return DTACardinality.ZERO_STAR;
 	    if (restriction.isCardinalityRestriction())
-	    	return Cardinality.ONE_ONE;
+	    	return DTACardinality.ONE_ONE;
 	    else if (restriction.isMaxCardinalityRestriction())
-	    	return Cardinality.ZERO_ONE;
+	    	return DTACardinality.ZERO_ONE;
 	    else if (restriction.isMinCardinalityRestriction())
-	    	return Cardinality.ONE_STAR;
+	    	return DTACardinality.ONE_STAR;
 	    return null;
     }
     

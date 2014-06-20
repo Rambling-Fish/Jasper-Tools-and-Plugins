@@ -6,6 +6,7 @@ import java.io.OutputStream;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 
 import org.eclipse.core.resources.IContainer;
@@ -54,9 +55,8 @@ public class DTACore  {
 	public static void dispose() {
 		stopListening();
 		listeners.clear();
-		for(IFile file : fileToModelMap.keySet())
+		for(IFile file : new HashSet<IFile>(fileToModelMap.keySet()))
 			unloadModel(file);
-		fileToModelMap.clear();
 		containerToSpecMap.clear();
 	}
 	

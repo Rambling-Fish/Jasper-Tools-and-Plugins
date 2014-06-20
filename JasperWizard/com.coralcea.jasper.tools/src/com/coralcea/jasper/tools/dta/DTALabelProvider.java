@@ -1,5 +1,7 @@
 package com.coralcea.jasper.tools.dta;
 
+import java.util.Iterator;
+
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Image;
 
@@ -47,8 +49,13 @@ public class DTALabelProvider extends LabelProvider {
 		Resource modelElement = (Resource) element;
 		String text = DTAUtilities.getLabel(modelElement);
 		if (DTAUtilities.isProperty(modelElement)) {
-			OntResource range = modelElement.as(OntProperty.class).getRange();
-			text += (range != null) ? " : "+ DTAUtilities.getLabel(range) : "";
+			Iterator<? extends OntResource> ranges = modelElement.as(OntProperty.class).listRange();
+			if (ranges.hasNext()) {
+				text += " : ";
+				while (ranges.hasNext())
+					text += DTAUtilities.getLabel(ranges.next()) + ", ";
+				text = text.substring(0, text.length()-2);
+			}
 		} else if (DTAUtilities.isOperation(modelElement) || DTAUtilities.isRequest(modelElement)) {
 			Property parameter = DTAUtilities.getPropertyResourceValue(modelElement, DTA.parameter, Property.class);
 			Property data = DTAUtilities.getPropertyResourceValue(modelElement, DTA.data, Property.class);

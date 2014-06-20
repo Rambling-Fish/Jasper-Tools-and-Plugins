@@ -1,5 +1,6 @@
 package com.coralcea.jasper.tools.dta.diagrams;
 
+import org.eclipse.draw2d.ColorConstants;
 import org.eclipse.draw2d.IFigure;
 import org.eclipse.draw2d.Label;
 import org.eclipse.draw2d.MarginBorder;
@@ -26,6 +27,7 @@ public class DTAOperationEditPart extends DTAResourceNodeEditPart {
 		Label label = new Label();
 		label.setLabelAlignment(PositionConstants.LEFT);
 		label.setBorder(new MarginBorder(2));
+		label.setOpaque(true);
 		return label;
 	}
 
@@ -41,7 +43,16 @@ public class DTAOperationEditPart extends DTAResourceNodeEditPart {
 	
 	@Override
 	protected void createEditPolicies() {
-		NonResizableEditPolicy editpolicy = new NonResizableEditPolicy();
+		NonResizableEditPolicy editpolicy = new NonResizableEditPolicy() {
+			protected void showSelection() {
+				super.showSelection();
+				getHostFigure().setBackgroundColor(ColorConstants.menuBackgroundSelected);
+			}			
+			protected void hideSelection() {
+				super.hideSelection();
+				getHostFigure().setBackgroundColor(null);
+			}
+		};
 		editpolicy.setDragAllowed(false);
 		installEditPolicy(EditPolicy.PRIMARY_DRAG_ROLE, editpolicy);
 	}

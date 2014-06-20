@@ -48,6 +48,7 @@ public class DTAClassEditPart extends DTAUMLNodeEditPart {
 		Label label = new Label();
 		label.setLabelAlignment(PositionConstants.CENTER);
 		label.setBorder(new MarginBorder(5));
+		label.setOpaque(true);
 		figure.add(label);
 		
 		IFigure separator = new RectangleFigure();
