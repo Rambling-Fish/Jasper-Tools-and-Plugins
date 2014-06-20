@@ -123,7 +123,7 @@ public class JasperConnectorTest extends FunctionalTestCase {
     	
 		Model submodel = ModelFactory.createDefaultModel();
 		submodel.read(new ByteArrayInputStream(result[0].getBytes()), null, JasperConstants.DTA_FORMAT);
-    	Assert.assertEquals(77, submodel.listStatements().toList().size());
+    	Assert.assertEquals(0, submodel.listStatements().toList().size());
     }
 
     @Test
