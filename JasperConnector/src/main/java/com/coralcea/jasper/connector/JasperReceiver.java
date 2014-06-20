@@ -14,6 +14,7 @@ import javax.jms.TextMessage;
 
 import org.codehaus.jackson.map.ObjectMapper;
 import org.mule.api.MuleMessage;
+import org.mule.transport.NullPayload;
 
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -114,7 +115,7 @@ public class JasperReceiver {
 
 		TextMessage jmsMsg = context.toJMSMessage(muleMsg, session);
 
-		if (dataType != null && content != null) {
+		if (dataType != null && content != null && !(content instanceof NullPayload)) {
 			if (dataType.isInstance(content)) {
 				String payload = jsonMapper.writeValueAsString(content);
 		        jmsMsg.setText(payload);
