@@ -119,7 +119,7 @@ public class JasperReceiver {
 				String payload = jsonMapper.writeValueAsString(content);
 		        jmsMsg.setText(payload);
 			} else
-				throw new Exception("The reply of operation "+operationURI+" does not comply to the operation's data type");
+				throw new Exception("The reply of operation "+operationURI+" does not comply to the operation's data type: "+content);
 		}
 		
         int code = muleMsg.getOutboundProperty(JasperConstants.STATUS_CODE, 200);
