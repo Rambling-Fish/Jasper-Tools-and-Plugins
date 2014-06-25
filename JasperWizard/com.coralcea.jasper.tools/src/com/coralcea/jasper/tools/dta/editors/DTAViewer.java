@@ -332,7 +332,14 @@ public abstract class DTAViewer extends Viewer {
 	
 	protected ToolItem createToolItem(ToolBar parent, String text, Image icon) {
 		ToolItem item = new ToolItem(parent, SWT.PUSH);
-		item.setImage(Activator.getImage(Images.PLUS));
+		item.setImage(icon);
+		item.setToolTipText(text);
+		return item;
+	}
+
+	protected ToolItem createToolItem(ToolBar parent, int index, String text, Image icon) {
+		ToolItem item = new ToolItem(parent, SWT.PUSH, index);
+		item.setImage(icon);
 		item.setToolTipText(text);
 		return item;
 	}

@@ -22,8 +22,10 @@ import org.eclipse.core.resources.IProject;
 import org.eclipse.core.resources.IProjectDescription;
 import org.eclipse.core.resources.IResource;
 import org.eclipse.core.runtime.CoreException;
+import org.eclipse.swt.graphics.Image;
 
 import com.coralcea.jasper.tools.Activator;
+import com.coralcea.jasper.tools.Images;
 import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.ontology.OntModel;
 import com.hp.hpl.jena.ontology.OntProperty;
@@ -50,6 +52,27 @@ public class DTAUtilities {
 	private static final Resource[] primitives = new Resource[] {XSD.integer, XSD.decimal, XSD.xstring, XSD.xboolean, XSD.duration, XSD.time, XSD.date, XSD.dateTime, XSD.hexBinary, RDFS.Literal};
 	private static final Set<Resource> primitiveSet = new HashSet<Resource>(Arrays.asList(primitives));
 
+	public static Image getImage(Resource modelElement) {
+		if (modelElement == null)
+			return null;
+		if (modelElement == DTA.DTAs || modelElement == DTA.Types | modelElement == DTA.Properties)
+			return Activator.getImage(Images.PACKAGE);
+		if (DTAUtilities.isOntology(modelElement))
+			return (DTAUtilities.isDefinedByBase(modelElement.as(Ontology.class)))
+				? Activator.getImage(Images.MODEL)
+				: Activator.getImage(Images.IMPORT);
+		if (DTAUtilities.isClass(modelElement))
+			return Activator.getImage(Images.CLASS);
+		if (DTAUtilities.isProperty(modelElement))
+			return Activator.getImage(Images.PROPERTY);
+		if (DTAUtilities.isDTA(modelElement))
+			return Activator.getImage(Images.DTA);
+		if (DTAUtilities.isOperation(modelElement))
+			return Activator.getImage(Images.OPERATION);
+		if (DTAUtilities.isRequest(modelElement))
+			return Activator.getImage(Images.REQUEST);
+		return null;
+	}
 
 	public static String getLabel(RDFNode node) {
 		if (node == null)

@@ -5,12 +5,9 @@ import java.util.Iterator;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.swt.graphics.Image;
 
-import com.coralcea.jasper.tools.Activator;
-import com.coralcea.jasper.tools.Images;
 import com.hp.hpl.jena.ontology.OntClass;
 import com.hp.hpl.jena.ontology.OntProperty;
 import com.hp.hpl.jena.ontology.OntResource;
-import com.hp.hpl.jena.ontology.Ontology;
 import com.hp.hpl.jena.ontology.Restriction;
 import com.hp.hpl.jena.rdf.model.Property;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -20,26 +17,7 @@ public class DTALabelProvider extends LabelProvider {
 
 	@Override
 	public Image getImage(Object element) {
-		if (element == null)
-			return null;
-		Resource modelElement = (Resource) element;
-		if (modelElement == DTA.DTAs || modelElement == DTA.Types | modelElement == DTA.Properties)
-			return Activator.getImage(Images.PACKAGE);
-		if (DTAUtilities.isOntology(modelElement))
-			return (DTAUtilities.isDefinedByBase(modelElement.as(Ontology.class)))
-				? Activator.getImage(Images.MODEL)
-				: Activator.getImage(Images.IMPORT);
-		if (DTAUtilities.isClass(modelElement))
-			return Activator.getImage(Images.CLASS);
-		if (DTAUtilities.isProperty(modelElement))
-			return Activator.getImage(Images.PROPERTY);
-		if (DTAUtilities.isDTA(modelElement))
-			return Activator.getImage(Images.DTA);
-		if (DTAUtilities.isOperation(modelElement))
-			return Activator.getImage(Images.OPERATION);
-		if (DTAUtilities.isRequest(modelElement))
-			return Activator.getImage(Images.REQUEST);
-		return null;
+		return DTAUtilities.getImage( (Resource) element);
 	}
 
 	@Override

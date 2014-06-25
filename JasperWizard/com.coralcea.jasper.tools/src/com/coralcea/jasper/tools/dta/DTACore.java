@@ -127,9 +127,9 @@ public class DTACore  {
 	public static OntModel loadModel(IFile file) throws CoreException {
 		if (file.exists()) {
 			OntModel model = createNewModel(file);
-			model.register(new ChangeListener(file));
 			fileToModelMap.put(file, model);
 			model.read(file.getContents(), null, DTA.FORMAT);
+			model.register(new ChangeListener(file));
 			return model;
 		}
 		return null;
