@@ -554,10 +554,11 @@ public class DTAPropertiesViewer extends DTAViewer {
 
 	private void addImportsSection(Composite parent, final Ontology element) {
         Section section = createSection(parent, "Imports", "The models imported by this "+DTAUtilities.getKind(element));
+
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
         
 		if (DTAUtilities.isDefinedByBase(element)) {
-			final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			ToolItem button = createAddButton(toolbar, element.getOntModel(), "Import",  new Listener() {
 				public void handleEvent(Event event) {
 					CompoundCommand cc = new CompoundCommand();
@@ -592,9 +593,10 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addDTAsSection(Composite parent, final Ontology element) {
         Section section = createSection(parent, "DTAs", "The DTAs defined in this "+DTAUtilities.getKind(element));
         
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+
 		if (DTAUtilities.isDefinedByBase(element)) {
-	        final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			ToolItem button = createNewButton(toolbar, element.getOntModel(), "DTA",  new Listener() {
 				public void handleEvent(Event event) {
 					String baseNs = element.getOntModel().getNsPrefixURI("");
@@ -629,9 +631,10 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addClassesSection(Composite parent, final Ontology element) {
         Section section = createSection(parent, "Types", "The types defined in this "+DTAUtilities.getKind(element));
 
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+
 		if (DTAUtilities.isDefinedByBase(element)) {
-	        final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			createNewButton(toolbar, element.getOntModel(), "Type",  new Listener() {
 				public void handleEvent(Event event) {
 					String baseNs = element.getOntModel().getNsPrefixURI("");
@@ -658,9 +661,10 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addPropertiesSection(Composite parent, final Ontology element) {
         Section section = createSection(parent, "Properties", "The properties defined in this "+DTAUtilities.getKind(element));
 
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+
 		if (DTAUtilities.isDefinedByBase(element)) {
-	        final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			createNewButton(toolbar, element.getOntModel(), "Property",  new Listener() {
 				public void handleEvent(Event event) {
 					String baseNs = element.getOntModel().getNsPrefixURI("");
@@ -687,9 +691,10 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addOperationsSection(Composite parent, final OntResource element) {
         Section section = createSection(parent, "Operations", "The operations defined by this "+DTAUtilities.getKind(element));
 
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+
 		if (DTAUtilities.isDefinedByBase(element)) {
-	        final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			createNewButton(toolbar, element.getOntModel(), "Operation",  new Listener() {
 				public void handleEvent(Event event) {
 					String baseNs = element.getOntModel().getNsPrefixURI("");
@@ -723,9 +728,10 @@ public class DTAPropertiesViewer extends DTAViewer {
 	private void addRequestsSection(Composite parent, final OntResource element) {
         Section section = createSection(parent, "Requests", "The requests defined by this "+DTAUtilities.getKind(element));
 
+        final ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+
 		if (DTAUtilities.isDefinedByBase(element)) {
-	        final ToolBar toolbar = createToolBar(section, 0);
-			section.setTextClient(toolbar);
 			createNewButton(toolbar, element.getOntModel(), "Request",  new Listener() {
 				public void handleEvent(Event event) {
 					String baseNs = element.getOntModel().getNsPrefixURI("");
@@ -760,6 +766,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Super Type",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -795,6 +802,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Sub Type",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -830,6 +838,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Property",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -887,6 +896,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Type",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -922,6 +932,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Type",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -957,6 +968,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Equivalent Property",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -993,6 +1005,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Super Property",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -1028,6 +1041,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 
         ToolBar toolbar = createToolBar(section, 0);
 		section.setTextClient(toolbar);
+		
 		createAddButton(toolbar, element.getOntModel(), "Sub Property",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
@@ -1236,6 +1250,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 		viewer.setInput(items);
 		
 		ToolBar toolbar = (ToolBar) section.getChildren()[2];
+		
 		createRemoveButton(toolbar, element.getOntModel(), "",  new Listener() {
 			public void handleEvent(Event event) {
 				CompoundCommand cc = new CompoundCommand();
