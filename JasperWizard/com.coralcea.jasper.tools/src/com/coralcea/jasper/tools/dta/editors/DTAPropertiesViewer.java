@@ -5,6 +5,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Set;
 import java.util.regex.Pattern;
@@ -12,6 +13,7 @@ import java.util.regex.Pattern;
 import org.eclipse.core.resources.IMarker;
 import org.eclipse.core.runtime.CoreException;
 import org.eclipse.draw2d.ColorConstants;
+import org.eclipse.gef.commands.Command;
 import org.eclipse.gef.commands.CompoundCommand;
 import org.eclipse.jface.action.Action;
 import org.eclipse.jface.action.IAction;
@@ -22,16 +24,28 @@ import org.eclipse.jface.dialogs.IMessageProvider;
 import org.eclipse.jface.dialogs.InputDialog;
 import org.eclipse.jface.fieldassist.ControlDecoration;
 import org.eclipse.jface.fieldassist.FieldDecorationRegistry;
+import org.eclipse.jface.viewers.ColumnLabelProvider;
+import org.eclipse.jface.viewers.ColumnViewerToolTipSupport;
+import org.eclipse.jface.viewers.ColumnWeightData;
 import org.eclipse.jface.viewers.ComboViewer;
+import org.eclipse.jface.viewers.DoubleClickEvent;
+import org.eclipse.jface.viewers.IDoubleClickListener;
 import org.eclipse.jface.viewers.ISelectionChangedListener;
+import org.eclipse.jface.viewers.IStructuredContentProvider;
 import org.eclipse.jface.viewers.IStructuredSelection;
 import org.eclipse.jface.viewers.LabelProvider;
 import org.eclipse.jface.viewers.SelectionChangedEvent;
 import org.eclipse.jface.viewers.StructuredSelection;
+import org.eclipse.jface.viewers.TableLayout;
+import org.eclipse.jface.viewers.TableViewer;
+import org.eclipse.jface.viewers.TableViewerColumn;
+import org.eclipse.jface.viewers.Viewer;
+import org.eclipse.jface.window.ToolTip;
 import org.eclipse.swt.SWT;
 import org.eclipse.swt.custom.ScrolledComposite;
 import org.eclipse.swt.events.ModifyEvent;
 import org.eclipse.swt.events.ModifyListener;
+import org.eclipse.swt.graphics.Image;
 import org.eclipse.swt.layout.GridData;
 import org.eclipse.swt.layout.GridLayout;
 import org.eclipse.swt.widgets.Button;
@@ -42,6 +56,7 @@ import org.eclipse.swt.widgets.Label;
 import org.eclipse.swt.widgets.Link;
 import org.eclipse.swt.widgets.Listener;
 import org.eclipse.swt.widgets.Shell;
+import org.eclipse.swt.widgets.Table;
 import org.eclipse.swt.widgets.Text;
 import org.eclipse.swt.widgets.ToolBar;
 import org.eclipse.swt.widgets.ToolItem;
@@ -52,8 +67,8 @@ import org.eclipse.ui.forms.widgets.Section;
 
 import com.coralcea.jasper.tools.Activator;
 import com.coralcea.jasper.tools.Images;
-import com.coralcea.jasper.tools.dta.DTACardinality;
 import com.coralcea.jasper.tools.dta.DTA;
+import com.coralcea.jasper.tools.dta.DTACardinality;
 import com.coralcea.jasper.tools.dta.DTAUtilities;
 import com.coralcea.jasper.tools.dta.commands.AddPropertyCommand;
 import com.coralcea.jasper.tools.dta.commands.ChangeCardinalityCommand;
@@ -452,46 +467,6 @@ public class DTAPropertiesViewer extends DTAViewer {
 		});
 	}
 
-	private void addPropertyTypesSection(final Composite parent, final OntProperty element) {
-        Section section = createSection(parent, "Types", "The types of this "+DTAUtilities.getKind(element));
-
-        ToolBar toolbar = createToolBar(section, 0);
-		section.setTextClient(toolbar);
-		createAddButton(toolbar, element.getOntModel(), "Type",  new Listener() {
-			public void handleEvent(Event event) {
-				CompoundCommand cc = new CompoundCommand();
-				Collection<Resource> types = DTAUtilities.listAvailableTypes(element.getOntModel());
-				Resource type = DTASelectionDialog.run("Select Type", element.getOntModel(), types, false, true);
-				if (DTA.New.equals(type)) {
-					String value = promptForNewURI(parent.getShell(), "Type", element.getOntModel().getNsPrefixURI(""));
-					if (value != null) {
-						type = element.getOntModel().getResource(value);
-						if (!element.getOntModel().contains(type, RDF.type))
-							cc.add(new SetPropertyCommand(type.as(OntResource.class), RDF.type, OWL.Class));
-					}
-				}
-				if (type != null && !element.hasRange(type)) {
-					cc.add(new AddPropertyCommand(element, RDFS.range, type));
-					getEditor().executeCommand(cc, true);
-				}
-			}
-		});
-		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(element.listRange())) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element, RDFS.range, i))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(element, RDFS.range, i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
-	}
-
 	private void addParameter(final Composite group, final OntResource element) {
         createLabel(group, "Parameter:", "The parameter of this "+DTAUtilities.getKind(element));
         
@@ -600,24 +575,18 @@ public class DTAPropertiesViewer extends DTAViewer {
 			});
 			button.setEnabled(DTAUtilities.isDefinedByBase(element));
 		}
-		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(element.listImports())) {
-			Link link = createLink(group, i);
-			
-			if (DTAUtilities.isDefinedByBase(element))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						CompoundCommand cc = new CompoundCommand();
-						cc.add(new ChangeImportLoadCommand(getEditor().getFile(), element.getOntModel(), i.getURI(), false));
-						cc.add(new RemovePropertyCommand(element, OWL.imports, i));
-						getEditor().executeCommand(cc, true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+
+		addItemsToSection(section, element.listImports(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					CompoundCommand cc = new CompoundCommand();
+					cc.add(new ChangeImportLoadCommand(getEditor().getFile(), element.getOntModel(), r.getURI(), false));
+					cc.add(new RemovePropertyCommand(element, OWL.imports, r));
+					return cc;
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addDTAsSection(Composite parent, final Ontology element) {
@@ -641,26 +610,20 @@ public class DTAPropertiesViewer extends DTAViewer {
 				button.setEnabled(false);
 		}
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final Resource i : DTAUtilities.sortOnLabel(DTAUtilities.listDefinedResources(element, DTA.DTA))) {
-			Link link = createLink(group, i);
-			
-			if (DTAUtilities.isDefinedByBase(element))
-				createDeleteButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						CompoundCommand cc = new CompoundCommand();
-						Collection<RDFNode> operations = DTAUtilities.listObjects(i, DTA.operation);
-						operations.addAll(DTAUtilities.listObjects(i, DTA.request));
-						for(RDFNode op : operations)
-							cc.add(new DeleteResourceCommand(op.asResource()));
-						cc.add(new DeleteResourceCommand(i));
-						getEditor().executeCommand(cc, true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listDefinedResources(element, DTA.DTA), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					CompoundCommand cc = new CompoundCommand();
+					for(RDFNode op : DTAUtilities.listObjects(r, DTA.operation))
+						cc.add(new DeleteResourceCommand(op.asResource()));
+					for(RDFNode op : DTAUtilities.listObjects(r, DTA.request))
+						cc.add(new DeleteResourceCommand(op.asResource()));
+					cc.add(new DeleteResourceCommand(r));
+					return cc;
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addClassesSection(Composite parent, final Ontology element) {
@@ -682,20 +645,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			});
 		}
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final Resource i : DTAUtilities.sortOnLabel(DTAUtilities.listDefinedClasses(element))) {
-			Link link = createLink(group, i);
-			
-			if (DTAUtilities.isDefinedByBase(element))
-				createDeleteButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new DeleteResourceCommand(i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listDefinedClasses(element), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					return new DeleteResourceCommand(r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addPropertiesSection(Composite parent, final Ontology element) {
@@ -717,20 +674,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			});
 		}
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final Resource i : DTAUtilities.sortOnLabel(DTAUtilities.listDefinedProperties(element))) {
-			Link link = createLink(group, i);
-			
-			if (DTAUtilities.isDefinedByBase(element))
-				createDeleteButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new DeleteResourceCommand(i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listDefinedProperties(element), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					return new DeleteResourceCommand(r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addOperationsSection(Composite parent, final OntResource element) {
@@ -759,20 +710,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			});
 		}
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (RDFNode n : DTAUtilities.sortOnLabel(element.listPropertyValues(DTA.operation))) {
-			final OntResource i =  n.as(OntResource.class);
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element))
-				createDeleteButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new DeleteResourceCommand(i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, element.listPropertyValues(DTA.operation), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					return new DeleteResourceCommand(r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addRequestsSection(Composite parent, final OntResource element) {
@@ -800,20 +745,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			});
 		}
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (RDFNode n : DTAUtilities.sortOnLabel(element.listPropertyValues(DTA.request))) {
-			final OntResource i =  n.as(OntResource.class);
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element))
-				createDeleteButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new DeleteResourceCommand(i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, element.listPropertyValues(DTA.request), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element)) {
+					return new DeleteResourceCommand(r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addSuperclassesSection(final Composite parent, final OntClass element) {
@@ -841,19 +780,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(element.listSuperClasses(true))) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element, RDFS.subClassOf, i))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(element, RDFS.subClassOf, i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, element.listSuperClasses(true), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element, RDFS.subClassOf, r)) {
+					return new RemovePropertyCommand(element, RDFS.subClassOf, r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addSubclassesSection(final Composite parent, final OntClass element) {
@@ -881,19 +815,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(element.listSubClasses(true))) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(i, RDFS.subClassOf, element))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(i, RDFS.subClassOf, element), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, element.listSubClasses(true), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(r, RDFS.subClassOf, element)) {
+					return new RemovePropertyCommand(r, RDFS.subClassOf, element);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addClassPropertiesSection(final Composite parent, final OntClass element) {
@@ -953,6 +882,41 @@ public class DTAPropertiesViewer extends DTAViewer {
 		}
 	}
 	
+	private void addPropertyTypesSection(final Composite parent, final OntProperty element) {
+        Section section = createSection(parent, "Types", "The types of this "+DTAUtilities.getKind(element));
+
+        ToolBar toolbar = createToolBar(section, 0);
+		section.setTextClient(toolbar);
+		createAddButton(toolbar, element.getOntModel(), "Type",  new Listener() {
+			public void handleEvent(Event event) {
+				CompoundCommand cc = new CompoundCommand();
+				Collection<Resource> types = DTAUtilities.listAvailableTypes(element.getOntModel());
+				Resource type = DTASelectionDialog.run("Select Type", element.getOntModel(), types, false, true);
+				if (DTA.New.equals(type)) {
+					String value = promptForNewURI(parent.getShell(), "Type", element.getOntModel().getNsPrefixURI(""));
+					if (value != null) {
+						type = element.getOntModel().getResource(value);
+						if (!element.getOntModel().contains(type, RDF.type))
+							cc.add(new SetPropertyCommand(type.as(OntResource.class), RDF.type, OWL.Class));
+					}
+				}
+				if (type != null && !element.hasRange(type)) {
+					cc.add(new AddPropertyCommand(element, RDFS.range, type));
+					getEditor().executeCommand(cc, true);
+				}
+			}
+		});
+		
+		addItemsToSection(section, element.listRange(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element, RDFS.range, r)) {
+					return new RemovePropertyCommand(element, RDFS.range, r);
+				}
+				return null;
+			}
+		});
+	}
+
 	private void addPropertyClassesSection(final Composite parent, final OntProperty element) {
         Section section = createSection(parent, "Defining Types", "The defining types of this "+DTAUtilities.getKind(element));
 
@@ -978,19 +942,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(element.listDomain())) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element, RDFS.domain, i))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(element, RDFS.domain, i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, element.listDomain(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element, RDFS.domain, r)) {
+					return new RemovePropertyCommand(element, RDFS.domain, r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addEquivalentPropertiesSection(final Composite parent, final OntProperty element) {
@@ -1018,23 +977,15 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final Property i : DTAUtilities.sortOnLabel(DTAUtilities.listAllEquivalentProperties(element).iterator())) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element, OWL.equivalentProperty, i) || 
-				DTAUtilities.isDefinedByBase(element.getOntModel(), i, OWL.equivalentProperty, element))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						if (DTAUtilities.isDefinedByBase(element, OWL.equivalentProperty, i))
-							getEditor().executeCommand(new RemovePropertyCommand(element, OWL.equivalentProperty, i), true);
-						else
-							getEditor().executeCommand(new RemovePropertyCommand(i, OWL.equivalentProperty, element), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listAllEquivalentProperties(element).iterator(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element, OWL.equivalentProperty, r))
+					return new RemovePropertyCommand(element, OWL.equivalentProperty, r);
+				if (DTAUtilities.isDefinedByBase(element.getOntModel(), r, OWL.equivalentProperty, element))
+					return new RemovePropertyCommand(r, OWL.equivalentProperty, element);
+				return null;
+			}
+		});
 	}
 
 	private void addSuperPropertiesSection(final Composite parent, final OntProperty element) {
@@ -1062,19 +1013,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(DTAUtilities.listObjects(element, RDFS.subPropertyOf, OntResource.class).iterator())) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(element, RDFS.subPropertyOf, i))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(element, RDFS.subPropertyOf, i), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listObjects(element, RDFS.subPropertyOf, OntResource.class).iterator(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(element, RDFS.subPropertyOf, r)) {
+					return new RemovePropertyCommand(element, RDFS.subPropertyOf, r);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addSubPropertiesSection(final Composite parent, final OntProperty element) {
@@ -1102,19 +1048,14 @@ public class DTAPropertiesViewer extends DTAViewer {
 			}
 		});
 		
-		Composite group = createComposite(section, 2);
-		section.setClient(group);
-		for (final OntResource i : DTAUtilities.sortOnLabel(DTAUtilities.listSubjects(RDFS.subPropertyOf, element, OntResource.class).iterator())) {
-			Link link = createLink(group, i);
-			if (DTAUtilities.isDefinedByBase(i, RDFS.subPropertyOf, element))
-				createRemoveButton(group, i, new HyperlinkAdapter() {
-					public void linkActivated(HyperlinkEvent e) {
-						getEditor().executeCommand(new RemovePropertyCommand(i, RDFS.subPropertyOf, element), true);
-					}
-				});
-			else
-				((GridData)link.getLayoutData()).horizontalSpan = 2;
-		}
+		addItemsToSection(section, DTAUtilities.listSubjects(RDFS.subPropertyOf, element, OntResource.class).iterator(), new IDeleteCommandProvider() {
+			public Command getDeleteCommand(OntResource r) {
+				if (DTAUtilities.isDefinedByBase(r, RDFS.subPropertyOf, element)) {
+					return new RemovePropertyCommand(r, RDFS.subPropertyOf, element);
+				}
+				return null;
+			}
+		});
 	}
 
 	private void addParametersSection(final Composite parent, final OntResource element) {
@@ -1190,6 +1131,11 @@ public class DTAPropertiesViewer extends DTAViewer {
 		return link;
 	}
 
+	private ToolItem createRemoveButton(final ToolBar toolbar, final OntModel model, final String type, Listener listener) {
+		ToolItem item = createToolItem(toolbar, 0, "Remove "+type, Activator.getImage(Images.MINUS));
+		item.addListener(SWT.Selection, listener);
+		return item;
+	}
 	private Link createLink(Composite parent, Resource target) {
 		String text = (target!= null) ? DTAUtilities.getLabel(target) : "None";
 		text = (target!=null) ? "<a>"+text+"</a>" : text;
@@ -1236,13 +1182,80 @@ public class DTAPropertiesViewer extends DTAViewer {
 		return dialog.open() == Dialog.OK ? dialog.getValue() : null;
 	}
 	
-	private static class FragmentProvider extends LabelProvider {
+	private void addItemsToSection(Section section, Iterator<? extends RDFNode> items, final IDeleteCommandProvider provider) {
+		final TableViewer viewer = new TableViewer(section, SWT.VIRTUAL | SWT.MULTI | SWT.V_SCROLL | SWT.HIDE_SELECTION | SWT.BORDER);
+		
+		Table table = viewer.getTable();
+		TableLayout tableLayout = new TableLayout();
+		table.setLayout(tableLayout);		
+		section.setClient(table);
+		//table.setHeaderVisible(true);
+		table.setLinesVisible(true);		
+		//GridData layoutData = new GridData(100, 100);
+		//table.setLayoutData(layoutData);
+		
+ 		viewer.setContentProvider(new IStructuredContentProvider() {
+			@SuppressWarnings("unchecked")
+			public Object[] getElements(Object inputElement) {
+				return DTAUtilities.sortOnLabel((Iterator<? extends RDFNode>)inputElement).toArray();
+			}
+			public void inputChanged(Viewer viewer, Object oldInput, Object newInput) {
+			}
+			public void dispose() {
+			}
+		});
 
+ 		viewer.addDoubleClickListener(new IDoubleClickListener() {
+            public void doubleClick(DoubleClickEvent event) {
+            	Object element = ((StructuredSelection)event.getSelection()).getFirstElement();
+				setSelection(new StructuredSelection(element), true);
+            }
+ 		});
+ 		
+		TableViewerColumn nameColumn = new TableViewerColumn(viewer, SWT.NONE);
+		tableLayout.addColumnData(new ColumnWeightData(1));
+		nameColumn.setLabelProvider(new ColumnLabelProvider() {
+			public String getText(Object element) {
+				Resource r = (Resource) element;
+				return DTAUtilities.getLabel(r);
+			}
+			public Image getImage(Object element) {
+				//Resource r = (Resource) element;
+				return null;//DTAUtilities.getImage(r);
+			}
+			public String getToolTipText(Object element) {
+				Resource r = (Resource) element;
+				return r.getURI();
+			}
+			public boolean useNativeToolTip(Object object) {
+				return true;
+			}
+		});
+		
+		ColumnViewerToolTipSupport.enableFor(viewer, ToolTip.NO_RECREATE);
+		viewer.setInput(items);
+		
+		ToolBar toolbar = (ToolBar) section.getChildren()[2];
+		createRemoveButton(toolbar, element.getOntModel(), "",  new Listener() {
+			public void handleEvent(Event event) {
+				CompoundCommand cc = new CompoundCommand();
+				StructuredSelection selection = (StructuredSelection) viewer.getSelection();
+				for (Object e : selection.toList())
+					cc.add(provider.getDeleteCommand(((RDFNode)e).as(OntResource.class)));
+				getEditor().executeCommand(cc, true);
+			}
+		});
+	}
+	
+	private interface IDeleteCommandProvider {
+		Command getDeleteCommand(OntResource r);
+	}
+	
+	private static class FragmentProvider extends LabelProvider {
 		@Override
 		public String getText(Object element) {
 			Resource r = (Resource) element;
 			return URI.create(r.getURI()).getFragment();
 		}
-
 	}
 }
