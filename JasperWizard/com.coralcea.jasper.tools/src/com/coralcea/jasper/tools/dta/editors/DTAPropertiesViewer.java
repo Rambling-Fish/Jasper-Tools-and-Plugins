@@ -208,7 +208,7 @@ public class DTAPropertiesViewer extends DTAViewer {
 			IMarker[] markers = DTAUtilities.getMarkers(getEditor().getFile(), element);
 			if (markers.length>0) {
 				int kind = IMessageProvider.NONE;
-				int markerKind = (int) markers[0].getAttribute(IMarker.SEVERITY);
+				int markerKind = (int) markers[0].getAttribute(IMarker.SEVERITY, IMarker.SEVERITY_WARNING);
 				if (markerKind == IMarker.SEVERITY_ERROR)
 					kind = IMessageProvider.ERROR;
 				else if (markerKind == IMarker.SEVERITY_WARNING)
