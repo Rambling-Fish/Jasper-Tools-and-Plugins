@@ -22,7 +22,7 @@ public class JasperConstants {
 	public static final String VERSION = "1.0";
 	public static final String JSON = "application/json";
 	public static final String AGGREGATE = "aggregate";
-	public static final String MERGE = "merge";
+	public static final String COALESCE = "coalesce";
 	public static final String GET = "GET";
 	public static final String POST = "POST";
 	public static final String PUBLISH = "PUBLISH";
