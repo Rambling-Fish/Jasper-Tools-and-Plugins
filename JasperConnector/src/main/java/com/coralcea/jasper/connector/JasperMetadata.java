@@ -5,6 +5,8 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.lang.reflect.Array;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashSet;
@@ -60,12 +62,14 @@ public class JasperMetadata extends JasperConstants {
 		        return super.readModel(model, filenameOrURI);
 			}
 		};
+
 		fileManager.addLocatorFile(file.getParent());
-		
-		OntDocumentManager dm = new OntDocumentManager(fileManager, DTA_IMPORT_POLICY);
+		Path path = Paths.get(file.getParent());
+
+		OntDocumentManager dm = new OntDocumentManager(fileManager, path.resolve(DTA_IMPORT_POLICY).toString());
 		dm.setReadFailureHandler(new OntDocumentManager.ReadFailureHandler() {
 			public void handleFailedRead(String uri, Model model, Exception e) {
-				logger.error("Could not load the imported model <"+uri+">");
+				logger.error("Could not load the imported model <"+uri+"> : " + e);
 			}
 		});
 		
