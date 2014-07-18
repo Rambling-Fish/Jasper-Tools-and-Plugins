@@ -138,7 +138,7 @@ public class JasperReceiver {
 		Map<String, String> headers = new HashMap<String, String>();
 		headers.put(JasperConstants.CONTENT_TYPE, JasperConstants.JSON);
 		headers.put(JasperConstants.RESPONSE_TYPE, JasperConstants.JSON);
-		headers.put(JasperConstants.PROCESSING_SCHEME, isMultiValued? JasperConstants.AGGREGATE : JasperConstants.MERGE);
+		headers.put(JasperConstants.PROCESSING_SCHEME, isMultiValued? JasperConstants.AGGREGATE : JasperConstants.COALESCE);
 		headers.put(JasperConstants.EXPIRES, String.valueOf(expiry));//no expiry yet
 		req.setHeaders(headers);
 		req.setParameters(null);//no parameters yet
