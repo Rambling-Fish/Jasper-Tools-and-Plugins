@@ -910,8 +910,17 @@ public class DTAPropertiesViewer extends DTAViewer {
 							cc.add(new SetPropertyCommand(type.as(OntResource.class), RDF.type, OWL.Class));
 					}
 				}
-				if (type != null && !element.hasRange(type)) {
-					cc.add(new AddPropertyCommand(element, RDFS.range, type));
+				if (type != null && !type.equals(element.getRange())) {
+					cc.add(new SetPropertyCommand(element, RDFS.range, DTA.None.equals(type) ? null : type));
+					if (element.isDatatypeProperty() && (DTA.None.equals(type) || !DTAUtilities.isDatatype(type))) {
+						cc.add(new RemovePropertyCommand(element, RDF.type, OWL.DatatypeProperty));
+						cc.add(new AddPropertyCommand(element, RDF.type, OWL.ObjectProperty));
+					}
+					else if (element.isObjectProperty() && !DTA.None.equals(type) && DTAUtilities.isDatatype(type)) {
+						cc.add(new RemovePropertyCommand(element, RDF.type, OWL.ObjectProperty));
+						cc.add(new AddPropertyCommand(element, RDF.type, OWL.DatatypeProperty));
+					}
+
 					getEditor().executeCommand(cc, true);
 				}
 			}
