@@ -14,7 +14,7 @@ public class UDELicense implements Serializable {
 	
 	// To provide version-ing of the properties use the following 
 	// Annotations 
-	// @Since(2.1) or @Until(2.0)
+	// @Since(2.1) or @Until(2.0) to be used in conjunction with gson = new GsonBuilder().setVersion(<version>).create() in LicKeyGenerator class
 	// @Expose controls which properties can be 
 	// serialized (Java to JSON) and/or deserialized (JSON to JAVA)
 	// Sample annotation @Expose(serialize = false, deserialize = false)
@@ -25,6 +25,7 @@ public class UDELicense implements Serializable {
 	@Expose private int instanceId;
 	@Expose private Integer numOfPublishers;
 	@Expose private Integer numOfConsumers;
+	@Since(2.2) private boolean aclEnabled;
 	@Expose private Calendar expiry;
 	@Expose private String ntpHost;
 	@Expose private Integer ntpPort;
@@ -32,8 +33,8 @@ public class UDELicense implements Serializable {
 	private byte[] licenseKey;
 	
 	public UDELicense(String type, String version, String deploymentId, int instanceId, 
-			Integer numOfPublishers, Integer numOfConsumers, Calendar expiry,
-			String ntpHost, Integer ntpPort, byte[] licenseKey) {
+			Integer numOfPublishers, Integer numOfConsumers, boolean aclEnabled, 
+			Calendar expiry, String ntpHost, Integer ntpPort, byte[] licenseKey) {
 		super();
 		this.type = type;
 		this.version = version;
@@ -41,6 +42,7 @@ public class UDELicense implements Serializable {
 		this.instanceId = instanceId;
 		this.numOfPublishers = numOfPublishers;
 		this.numOfConsumers = numOfConsumers;
+		this.aclEnabled = aclEnabled;
 		this.expiry = expiry;
 		this.ntpHost = ntpHost;
 		this.ntpPort = ntpPort;
@@ -93,6 +95,14 @@ public class UDELicense implements Serializable {
 
 	public void setNumOfConsumers(Integer numOfConsumers) {
 		this.numOfConsumers = numOfConsumers;
+	}
+	
+	public boolean isAclEnabled() {
+		return aclEnabled;
+	}
+
+	public void setAclEnabled(boolean aclEnabled) {
+		this.aclEnabled = aclEnabled;
 	}
 
 	public Calendar getExpiry() {
