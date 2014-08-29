@@ -25,7 +25,7 @@ public class UDELicense implements Serializable {
 	@Expose private int instanceId;
 	@Expose private Integer numOfPublishers;
 	@Expose private Integer numOfConsumers;
-	@Since(2.2) private boolean aclEnabled;
+	@Expose private boolean aclEnabled;
 	@Expose private Calendar expiry;
 	@Expose private String ntpHost;
 	@Expose private Integer ntpPort;

@@ -11,6 +11,7 @@
     <artifactId>jLib-jAuth-lib</artifactId>
   	<packaging>jar</packaging>
   	<name>jLib-jAuth-lib</name>
+        <version>2.2-SNAPSHOT</version>
   	<description></description>
 
   <distributionManagement>
