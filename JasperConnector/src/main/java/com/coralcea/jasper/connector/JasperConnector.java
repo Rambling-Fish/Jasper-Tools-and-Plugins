@@ -400,7 +400,7 @@ public class JasperConnector implements MuleContextAware
      * @return Response The MuleMessage to forward to the next processor
      * @throws Exception if any error occurs
      */
-    @Processor(friendlyName="Send")@Inject
+    @Processor(friendlyName="Publish")@Inject
     public Object publish(@Placement(group="Parameters")@FriendlyName("Operation URI") final String operation,
     				   @Lookup MuleEvent muleEvent) throws Exception
     {
@@ -476,7 +476,7 @@ public class JasperConnector implements MuleContextAware
      * @param callback The message processor to forward messages received to
      * @throws Exception if any error occurs
      */
-    @Source(friendlyName="Execute", exchangePattern=MessageExchangePattern.REQUEST_RESPONSE, threadingModel=SourceThreadingModel.NONE)
+    @Source(friendlyName="Subscribe", exchangePattern=MessageExchangePattern.REQUEST_RESPONSE, threadingModel=SourceThreadingModel.NONE)
     public StopSourceCallback subscribe(@Placement(group="Parameters")@FriendlyName("Request URI") final String request,
     		                          final SourceCallback callback) throws Exception
     {

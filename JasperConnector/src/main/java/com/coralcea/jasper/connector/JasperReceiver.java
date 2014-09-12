@@ -35,6 +35,7 @@ public class JasperReceiver {
 	private boolean subscribe;
 	private String operationURI;
 	private String destination;
+	private String subscriptionId;
 	
 	public JasperReceiver() {
 		this(null, false);
@@ -79,7 +80,10 @@ public class JasperReceiver {
 		if (listener != null)
 			consumer.setMessageListener(listener);
 		if (subscribe)
+		{
+			subscriptionId = "sId." + UUID.randomUUID().toString();
 			subscribe(-1/* no expiry */);
+		}
 	}
 	
 	public void stop() throws Exception {
@@ -140,6 +144,7 @@ public class JasperReceiver {
 		headers.put(JasperConstants.RESPONSE_TYPE, JasperConstants.JSON);
 		headers.put(JasperConstants.PROCESSING_SCHEME, isMultiValued? JasperConstants.AGGREGATE : JasperConstants.COALESCE);
 		headers.put(JasperConstants.EXPIRES, String.valueOf(expiry));//no expiry yet
+		headers.put(JasperConstants.SUBSCRIPTION_ID, subscriptionId);
 		req.setHeaders(headers);
 		req.setParameters(null);//no parameters yet
 				
