@@ -1,7 +1,5 @@
 package com.coralcea.jasper.connector;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 
 import javax.jms.JMSException;
@@ -15,6 +13,10 @@ import javax.jms.TextMessage;
 import org.codehaus.jackson.map.ObjectMapper;
 import org.mule.api.MuleMessage;
 import org.mule.transport.NullPayload;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -139,24 +141,25 @@ public class JasperReceiver {
 		req.setMethod(JasperConstants.DTA_Subscribe.getLocalName().toUpperCase());
 		req.setRuri(data.getURI());
 		req.setRule(rule);
-		Map<String, String> headers = new HashMap<String, String>();
-		headers.put(JasperConstants.CONTENT_TYPE, JasperConstants.JSON);
-		headers.put(JasperConstants.RESPONSE_TYPE, JasperConstants.JSON);
-		headers.put(JasperConstants.PROCESSING_SCHEME, isMultiValued? JasperConstants.AGGREGATE : JasperConstants.COALESCE);
-		headers.put(JasperConstants.EXPIRES, String.valueOf(expiry));//no expiry yet
-		headers.put(JasperConstants.SUBSCRIPTION_ID, subscriptionId);
+		JsonObject headers = new JsonObject();
+		headers.add(JasperConstants.CONTENT_TYPE, new JsonPrimitive(JasperConstants.JSON));
+		headers.add(JasperConstants.RESPONSE_TYPE, new JsonPrimitive(JasperConstants.JSON));
+		headers.add(JasperConstants.PROCESSING_SCHEME, isMultiValued? new JsonPrimitive(JasperConstants.AGGREGATE) : new JsonPrimitive(JasperConstants.COALESCE));
+		headers.add(JasperConstants.EXPIRES, new JsonPrimitive(expiry));//no expiry yet
+		headers.add(JasperConstants.SUBSCRIPTION_ID, new JsonPrimitive(subscriptionId));
 		req.setHeaders(headers);
 		req.setParameters(null);//no parameters yet
-				
-		String payload = jsonMapper.writeValueAsString(req);
 		
-        TextMessage msg = session.createTextMessage();
+		Gson gson = new Gson();
+		TextMessage msg = session.createTextMessage();
+
 		msg.setJMSCorrelationID(UUID.randomUUID().toString());
 		msg.setJMSReplyTo(queue);// send the data on the receiver's queue
-		msg.setText(payload);
-        
+		msg.setText(gson.toJson(req));
+
 		Queue q = session.createQueue(JasperConstants.GLOBAL_QUEUE);
 		MessageProducer producer = session.createProducer(q);
 		producer.send(msg);
+
 	}
 }

@@ -1,6 +1,6 @@
 package com.coralcea.jasper.connector;
 
-import java.util.Map;
+import com.google.gson.JsonObject;
 
 public class JasperRequest {
 
@@ -8,8 +8,8 @@ public class JasperRequest {
 	private String method;
 	private String ruri;
 	private String rule;
-	private Map<String, String> headers;
-	private Object parameters;
+	private JsonObject headers;
+	private JsonObject parameters;
 	private byte[] payload;
 
 	public String getVersion() {
@@ -44,19 +44,19 @@ public class JasperRequest {
 		this.rule = rule;
 	}
 
-	public Map<String, String> getHeaders() {
+	public JsonObject getHeaders() {
 		return headers;
 	}
 
-	public void setHeaders(Map<String, String> headers) {
+	public void setHeaders(JsonObject headers) {
 		this.headers = headers;
 	}
 
-	public Object getParameters() {
+	public JsonObject getParameters() {
 		return parameters;
 	}
 
-	public void setParameters(Object parameters) {
+	public void setParameters(JsonObject parameters) {
 		this.parameters = parameters;
 	}
 

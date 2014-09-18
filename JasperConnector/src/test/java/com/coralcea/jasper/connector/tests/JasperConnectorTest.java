@@ -312,9 +312,8 @@ public class JasperConnectorTest extends FunctionalTestCase {
 								RequestMSData.Parameter receivedRequest = mapper.readValue(parameters.toString(), RequestMSData.Parameter.class);
 								
 								synchronized (lock) {
-									JasperRequest request = mapper.readValue(text,JasperRequest.class);
-									String expires = request.getHeaders().get(JasperConstants.EXPIRES);
-									int timeout = Integer.valueOf(expires);
+									JsonNode headers = new JsonData(text).get("headers");
+									int timeout = headers.get("expires").asInt();;
 									lock.wait(timeout*1000);
 								}
 								

@@ -1,8 +1,6 @@
 package com.coralcea.jasper.connector;
 
 import java.io.Serializable;
-import java.util.HashMap;
-import java.util.Map;
 
 import javax.jms.DeliveryMode;
 import javax.jms.JMSException;
@@ -20,6 +18,11 @@ import org.mule.api.MuleEvent;
 import org.mule.api.MuleEventContext;
 import org.mule.api.MuleMessage;
 import org.mule.api.lifecycle.Callable;
+
+import com.google.gson.Gson;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import com.google.gson.JsonPrimitive;
 
 import com.hp.hpl.jena.ontology.OntResource;
 import com.hp.hpl.jena.rdf.model.Resource;
@@ -89,26 +92,33 @@ public class JasperSender {
 
 	public TextMessage convertOutgoingMessage(JasperContext context, MuleMessage muleMsg, int expires) throws Exception {
 		Object content = muleMsg.getPayload();
+
 		if (!parameterType.isInstance(content))
 			throw new Exception("Invalid input passed to request "+requestURI+": "+content);
 		
+		Gson gson = new Gson();
+		JsonParser parser = new JsonParser();
+
+		JsonObject headers = new JsonObject();
+		headers.add(JasperConstants.CONTENT_TYPE, new JsonPrimitive(JasperConstants.JSON));
+		headers.add(JasperConstants.RESPONSE_TYPE, new JsonPrimitive(JasperConstants.JSON));
+		headers.add(JasperConstants.PROCESSING_SCHEME, isMultiValued? new JsonPrimitive(JasperConstants.AGGREGATE) : new JsonPrimitive(JasperConstants.COALESCE));
+		headers.add(JasperConstants.EXPIRES, new JsonPrimitive(expires));
+		
+		JsonObject parameters = parser.parse(jsonMapper.writeValueAsString(content)).getAsJsonObject();		
+				
 		JasperRequest req = new JasperRequest();
+		
 		req.setVersion(JasperConstants.VERSION);
 		req.setMethod(kind.getLocalName().toUpperCase());
 		req.setRuri(req.getMethod().equals(JasperConstants.GET) ? data.getURI() : parameter.getURI());
 		req.setRule(rule);
-		Map<String, String> headers = new HashMap<String, String>();
-		headers.put(JasperConstants.CONTENT_TYPE, JasperConstants.JSON);
-		headers.put(JasperConstants.RESPONSE_TYPE, JasperConstants.JSON);
-		headers.put(JasperConstants.PROCESSING_SCHEME, isMultiValued? JasperConstants.AGGREGATE : JasperConstants.COALESCE);
-		headers.put(JasperConstants.EXPIRES, String.valueOf(expires));
 		req.setHeaders(headers);
-		req.setParameters(content);
-				
-		String payload = jsonMapper.writeValueAsString(req);
+		req.setParameters(parameters);
 		
-        TextMessage jmsMsg = context.toJMSMessage(muleMsg, session);
-        jmsMsg.setText(payload);
+		TextMessage jmsMsg = context.toJMSMessage(muleMsg, session);
+		jmsMsg.setText(gson.toJson(req));
+
         return jmsMsg;
 	}
 
